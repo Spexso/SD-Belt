@@ -13,129 +13,108 @@
  Servo ServoMotor;
  
  // BTS7960 Motor Controller Pins
- const int RPWM = 11;    // PWM signal for clockwise rotation (forward)
- const int LPWM = 12;   // PWM signal for counter-clockwise rotation (reverse)
- const int R_EN = 7;    // Enable pin for clockwise rotation
- const int L_EN = 8;    // Enable pin for counter-clockwise rotation
+ const int RPWM = 11;
+ const int LPWM = 12;
+ const int R_EN = 7;
+ const int L_EN = 8;
  const int trigPin = 4;
  const int echoPin = 5;
  
  // Motor control variables
- int currentSpeed = 0;        // Current speed (0-255)
- int targetSpeed = 0;         // Target speed for acceleration/deceleration (0-255)
- int currentDirection = 1;    // 1 for forward, -1 for reverse
- int rampRate = 5;            // Speed change per iteration during ramping (1-20)
- unsigned long lastRampTime = 0;  // Last time speed was adjusted
- const int rampInterval = 50; // Milliseconds between speed adjustments
+ int currentSpeed = 0;
+ int targetSpeed = 0;
+ int currentDirection = 1;
+ int rampRate = 5;
+ unsigned long lastRampTime = 0;
+ const int rampInterval = 50;
  
- String inputString = "";      // String to hold incoming data
- boolean stringComplete = false;  // Whether the string is complete
+ String inputString = "";
+ boolean stringComplete = false;
  
  void setup() {
-   // Initialize serial communication
    Serial.begin(9600);
- 
-   // Servo Motor Signal pin
-   ServoMotor.attach(3);  
-   
-   // Reserve memory for inputString
+   ServoMotor.attach(3);
    inputString.reserve(200);
-   
-   // Configure motor controller pins
+ 
    pinMode(RPWM, OUTPUT);
    pinMode(LPWM, OUTPUT);
    pinMode(R_EN, OUTPUT);
    pinMode(L_EN, OUTPUT);
-   
-   // Enable the motor driver
+ 
+   pinMode(trigPin, OUTPUT);
+   pinMode(echoPin, INPUT);
+ 
    digitalWrite(R_EN, HIGH);
    digitalWrite(L_EN, HIGH);
-   
-   // Initially stop the motor
+ 
    analogWrite(RPWM, 0);
    analogWrite(LPWM, 0);
  }
  
  void loop() {
-   // Process commands when a complete string is received
    if (stringComplete) {
      processCommand(inputString);
-     
-     // Clear the string for the next command
      inputString = "";
      stringComplete = false;
    }
-   
-   // Handle gradual speed changes (acceleration/deceleration)
+ 
    if (currentSpeed != targetSpeed && millis() - lastRampTime >= rampInterval) {
      updateMotorSpeed();
      lastRampTime = millis();
    }
-
-   static unsigned long lastDistanceTime = 0;
-    const unsigned long distanceInterval = 500; // ms
-
-    if (millis() - lastDistanceTime > distanceInterval)
-    {
-        long distance = measureDistance();
-        if (distance > 0) // valid
-        {
-            Serial.print("DISTANCE:");
-            Serial.print(distance);
-            Serial.println(" cm");
-        }
-        lastDistanceTime = millis();
-    }
-
-   long distance = measureDistance();
-   if (distance > 0)  // Valid reading
-   {
-
-   }
-}
  
- // Update motor speed during gradual acceleration/deceleration
+   static unsigned long lastDistanceTime = 0;
+   const unsigned long distanceInterval = 500;
+ 
+   if (millis() - lastDistanceTime > distanceInterval) {
+     long distance = measureDistance();
+     if (distance > 0) {
+       Serial.print("DISTANCE:");
+       Serial.print(distance);
+       Serial.println(" cm");
+ 
+       // Optional: auto-stop if object is very close
+       // if (distance < 10) {
+       //   targetSpeed = 0;
+       //   currentSpeed = 0;
+       //   applyMotorControl();
+       //   Serial.println("AUTO-STOP: Object too close");
+       // }
+     }
+     lastDistanceTime = millis();
+   }
+ }
+ 
  void updateMotorSpeed() {
    if (currentSpeed < targetSpeed) {
-     // Accelerate
      currentSpeed = min(currentSpeed + rampRate, targetSpeed);
    } else if (currentSpeed > targetSpeed) {
-     // Decelerate
      currentSpeed = max(currentSpeed - rampRate, targetSpeed);
    }
-   
-   // Apply the updated speed to the motor
    applyMotorControl();
  }
  
- // Apply current speed and direction to the motor
  void applyMotorControl() {
    if (currentSpeed == 0) {
-     // Stop motor
      analogWrite(RPWM, 0);
      analogWrite(LPWM, 0);
    } else if (currentDirection == 1) {
-     // Forward direction
-     analogWrite(LPWM, 0);  // Ensure reverse is off
+     analogWrite(LPWM, 0);
      analogWrite(RPWM, currentSpeed);
    } else {
-     // Reverse direction
-     analogWrite(RPWM, 0);  // Ensure forward is off
+     analogWrite(RPWM, 0);
      analogWrite(LPWM, currentSpeed);
    }
  }
  
- // Process serial commands
  void processCommand(String command) {
-   // Remove any whitespace
    command.trim();
-   
-   // Split command and value
+ 
    int colonIndex = command.indexOf(':');
    String cmd;
    String valueStr = "";
    int value = 0;
-   
+ 
    if (colonIndex != -1) {
      cmd = command.substring(0, colonIndex);
      valueStr = command.substring(colonIndex + 1);
@@ -143,10 +122,8 @@
    } else {
      cmd = command;
    }
-   
-   // Process commands
+ 
    if (cmd == "PCT") {
-     // Set speed by percentage (0-100%)
      if (value >= 0 && value <= 100) {
        targetSpeed = map(value, 0, 100, 0, 255);
        Serial.print("OK:PCT:");
@@ -158,56 +135,37 @@
    }
    else if (cmd == "STOP") {
      if (valueStr == "" || value == 0) {
-       // Immediate stop
        targetSpeed = 0;
-       currentSpeed = 0;  // Bypass the ramp
+       currentSpeed = 0;
        applyMotorControl();
        Serial.println("OK:STOP:Immediate");
      } else {
-       // Gradual stop with custom ramp rate
        targetSpeed = 0;
-       rampRate = constrain(value, 1, 50);  // Constrain ramp rate for safety
+       rampRate = constrain(value, 1, 50);
        Serial.print("OK:STOP:Gradual:");
        Serial.println(rampRate);
      }
    }
    else if (cmd == "START") {
-     if (valueStr == "" || value == 0) {
-       // Default start with standard ramp rate
-       rampRate = 5;
-     } else {
-       // Start with custom ramp rate
-       rampRate = constrain(value, 1, 20);
-     }
+     rampRate = (valueStr == "" || value == 0) ? 5 : constrain(value, 1, 20);
      Serial.print("OK:START:RampRate:");
      Serial.println(rampRate);
    }
    else if (cmd == "DIR") {
-     // Set direction: 1=forward, -1=reverse
      if (value == 1 || value == -1) {
        currentDirection = value;
        applyMotorControl();
-       if (currentDirection == 1) {
-         Serial.println("OK:DIR:Forward");
-       } else {
-         Serial.println("OK:DIR:Reverse");
-       }
+       Serial.println(currentDirection == 1 ? "OK:DIR:Forward" : "OK:DIR:Reverse");
      } else {
        Serial.println("ERR:Invalid direction. Use 1 (forward) or -1 (reverse)");
      }
    }
    else if (cmd == "REV") {
-     // Toggle direction
      currentDirection = -currentDirection;
      applyMotorControl();
-     if (currentDirection == 1) {
-       Serial.println("OK:REV:Forward");
-     } else {
-       Serial.println("OK:REV:Reverse");
-     }
+     Serial.println(currentDirection == 1 ? "OK:REV:Forward" : "OK:REV:Reverse");
    }
    else if (cmd == "STATUS") {
-     // Report current status
      String dirText = (currentDirection == 1) ? "Forward" : "Reverse";
      int pctSpeed = map(currentSpeed, 0, 255, 0, 100);
      Serial.print("STATUS:Speed:");
@@ -220,41 +178,37 @@
        ServoMotor.write(value);
        Serial.print("OK:SERVO:");
        Serial.println(value);
-     } 
+     }
    }
    else {
      Serial.println("ERR:Unknown command");
    }
  }
  
- // Calculate Distance of Product, return in cm/s
- long CalculateDistance()
- {
-  digitalWrite(trigPin, LOW);
-  delayMicroseconds(2);
-  digitalWrite(trigPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(trigPin, LOW);
-
-  long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout
-  long distance = duration * 0.034 / 2; // cm
-
-  return distance; // Returns -1 if timeout
+ // Distance measurement function
+ long measureDistance() {
+   digitalWrite(trigPin, LOW);
+   delayMicroseconds(2);
+   digitalWrite(trigPin, HIGH);
+   delayMicroseconds(10);
+   digitalWrite(trigPin, LOW);
+ 
+   long duration = pulseIn(echoPin, HIGH, 30000);
+   if (duration == 0) return -1;
+   long distance = duration * 0.034 / 2;
+   return distance;
  }
-
- // Event handler for serial data
+ 
+ // Serial input handler
  void serialEvent() {
    while (Serial.available()) {
      char inChar = (char)Serial.read();
-     
-     // Add received character to input string
      if (inChar != '\n') {
        inputString += inChar;
      }
-     
-     // If newline is received, set a flag so the main loop can process the command
      if (inChar == '\n') {
        stringComplete = true;
      }
    }
  }
+ 
