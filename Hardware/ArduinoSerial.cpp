@@ -13,6 +13,7 @@
  #include <thread>
  #include <chrono>
  #include <algorithm>
+ #include <mutex>
  
  // Constructor
  ArduinoSerial::ArduinoSerial(const std::string& portName) {

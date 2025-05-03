@@ -11,6 +11,7 @@
  #include <thread>
  #include <csignal>
  
+ 
  // Signal handler flag for clean shutdown
  volatile sig_atomic_t running = 1;
  
@@ -74,7 +75,8 @@
 		 // Step 3: Run at max speed for 10 seconds with distance checks
 		 std::cout << "Step 3: Running at max speed for 10 seconds..." << std::endl;
 		 for (int i = 0; i < 10 && running; i++) {
-			 std::string distanceLine = arduino.getLatestDistance();
+			 std::string distanceLine = arduino.ge
+			 tLatestDistance();
  
 			 if (!distanceLine.empty()) {
 				 std::cout << "  Distance reading: " << distanceLine << std::endl;
