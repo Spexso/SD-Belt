@@ -88,7 +88,6 @@
 					 if (dist > 0 && dist < 10) {
 						 std::cout << "⚠️  Object too close (" << dist << " cm)! Stopping motor." << std::endl;
 						 arduino.stopImmediate();
-						 return 0;
 					 }
 				 }
 			 }
