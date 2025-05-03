@@ -74,9 +74,9 @@
  
 		 // Step 3: Run at max speed for 10 seconds with distance checks
 		 std::cout << "Step 3: Running at max speed for 10 seconds..." << std::endl;
-		 for (int i = 0; i < 10 && running; i++) {
-			 std::string distanceLine = arduino.ge
-			 tLatestDistance();
+		 for (int i = 0; i < 10 && running; i++) 
+		 {
+			 std::string distanceLine = arduino.getLatestDistance();
  
 			 if (!distanceLine.empty()) {
 				 std::cout << "  Distance reading: " << distanceLine << std::endl;

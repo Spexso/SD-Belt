@@ -10,6 +10,9 @@
  
  #include <string>
  #include <termios.h>
+ #include <atomic>
+ #include <mutex>
+ #include <thread>
  
  class ArduinoSerial 
  {
