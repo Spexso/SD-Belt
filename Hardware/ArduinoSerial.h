@@ -105,6 +105,13 @@
 	 */
 	std::string setServoAngle(int angle);
 
+	/**
+	 * Get the latest distance reading received from Arduino
+	 *
+	 * @return Last received DISTANCE line
+	 */
+	std::string getLatestDistance();
+
 	protected:
 
 	 /**

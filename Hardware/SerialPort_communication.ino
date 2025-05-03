@@ -17,6 +17,8 @@
  const int LPWM = 12;   // PWM signal for counter-clockwise rotation (reverse)
  const int R_EN = 7;    // Enable pin for clockwise rotation
  const int L_EN = 8;    // Enable pin for counter-clockwise rotation
+ const int trigPin = 4;
+ const int echoPin = 5;
  
  // Motor control variables
  int currentSpeed = 0;        // Current speed (0-255)
@@ -69,7 +71,28 @@
      updateMotorSpeed();
      lastRampTime = millis();
    }
- }
+
+   static unsigned long lastDistanceTime = 0;
+    const unsigned long distanceInterval = 500; // ms
+
+    if (millis() - lastDistanceTime > distanceInterval)
+    {
+        long distance = measureDistance();
+        if (distance > 0) // valid
+        {
+            Serial.print("DISTANCE:");
+            Serial.print(distance);
+            Serial.println(" cm");
+        }
+        lastDistanceTime = millis();
+    }
+
+   long distance = measureDistance();
+   if (distance > 0)  // Valid reading
+   {
+
+   }
+}
  
  // Update motor speed during gradual acceleration/deceleration
  void updateMotorSpeed() {
@@ -204,6 +227,21 @@
    }
  }
  
+ // Calculate Distance of Product, return in cm/s
+ long CalculateDistance()
+ {
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  long duration = pulseIn(echoPin, HIGH, 30000); // 30ms timeout
+  long distance = duration * 0.034 / 2; // cm
+
+  return distance; // Returns -1 if timeout
+ }
+
  // Event handler for serial data
  void serialEvent() {
    while (Serial.available()) {
