@@ -104,6 +104,15 @@
 	 * @return The response from Arduino
 	 */
 	std::string setServoAngle(int angle);
+
+	protected:
+
+	 /**
+	 * Set the servo angle to initial
+	 *
+	 * @return The response to Arduino
+	 */
+	inline std::string setServoInitialAngle(){ return sendCommand("SERVO:" + std::to_string(45));}
  };
  
  #endif // ARDUINO_SERIAL_H

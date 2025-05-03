@@ -48,6 +48,10 @@
 		 // Implementing the specific scenario
 		 
 		 std::cout << "\n=== Starting Conveyor Belt Scenario ===\n" << std::endl;
+		 std::cout << "\n=== Setting initial angle for Servo Motor ===\n" << std::endl;
+
+		 setServoInitialAngle();
+
 		 
 		 // Step 1: Start the motor with gradual acceleration
 		 std::cout << "Step 1: Starting motor..." << std::endl;
