@@ -112,8 +112,6 @@
 	 */
 	std::string getLatestDistance();
 
-	protected:
-
 	 /**
 	 * Set the servo angle to initial
 	 *
