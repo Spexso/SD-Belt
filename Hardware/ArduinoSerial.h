@@ -11,10 +11,19 @@
  #include <string>
  #include <termios.h>
  
- class ArduinoSerial {
+ class ArduinoSerial 
+ {
+
  private:
-	 int serialPort;
-	 struct termios tty;
+	 
+ 	int serialPort;
+	struct termios tty;
+
+	std::thread readerThread;
+	std::atomic<bool> keepReading;
+	std::mutex dataMutex;               
+	std::string latestDistance;        
+	void readLoop();                    // Background reader thread
 	 
  public:
 	 /**
