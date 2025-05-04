@@ -1,0 +1,9 @@
+QMainWindow#MainWindow {
+    background-color: rgb(24, 31, 41);
+}
+
+QWidget#MainBackground {
+    background-color: #191f29;
+    border: 3px solid #293e59;
+    border-radius: 15px;
+}

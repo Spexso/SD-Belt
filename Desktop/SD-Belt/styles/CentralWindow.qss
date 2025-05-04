@@ -1,0 +1,3 @@
+QWidget#centralwidget {
+    background-color: #191f29;
+}

@@ -1,0 +1,12 @@
+<RCC>
+    <qresource prefix="/">
+        <file>styles/CentralWindow.qss</file>
+        <file>styles/MainWindow.qss</file>
+        <file>styles/img/Logo.png</file>
+        <file>styles/TextStyles.qss</file>
+        <file>styles/Header.qss</file>
+        <file>styles/img/CamerasLogo.png</file>
+        <file>styles/img/DashboardLogo.png</file>
+        <file>styles/img/LogsLogo.png</file>
+    </qresource>
+</RCC>
