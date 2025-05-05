@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QFile>
+#include "webcamwidget.h"
+#include <QPushButton>
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -25,10 +27,21 @@ protected:
     void SetupLogoOverlay();
     void SetupSystemStatusOverlay(QFile &HeaderStyle);
 
+
+
 private:
 
     Ui::MainWindow *ui;
     QVector<QFile*> ResourceStyles;
+
+    // Camera
+    WebcamWidget *webcam = nullptr;
+    QStringList cameraUrls;
+    int currentCameraIndex = 0;
+    QPushButton *prevButton = nullptr;
+    QPushButton *nextButton = nullptr;
+    void updateCameraView();
+
 
 private slots:
 

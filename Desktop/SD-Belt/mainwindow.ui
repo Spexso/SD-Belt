@@ -274,7 +274,7 @@
          </layout>
         </widget>
        </item>
-       <item alignment="Qt::AlignmentFlag::AlignLeft">
+       <item>
         <widget class="QFrame" name="TabMenu">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
@@ -416,17 +416,7 @@
            </widget>
           </item>
           <item>
-           <spacer name="verticalSpacer">
-            <property name="orientation">
-             <enum>Qt::Orientation::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>40</height>
-             </size>
-            </property>
-           </spacer>
+           <widget class="QWidget" name="cameraView" native="true"/>
           </item>
          </layout>
         </widget>
@@ -443,7 +433,7 @@
      <x>0</x>
      <y>0</y>
      <width>1139</width>
-     <height>21</height>
+     <height>17</height>
     </rect>
    </property>
    <property name="accessibleName">
