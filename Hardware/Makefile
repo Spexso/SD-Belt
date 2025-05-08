@@ -3,7 +3,7 @@ CXX = g++
 CXXFLAGS = -Wall -std=c++17
 
 # Source and target
-SRC = main.cpp ArduinoSerial.cpp ArduinoSerial.h
+SRC = main.cpp ArduinoSerial.cpp ArduinoSerial.h httplib.h
 TARGET = myprogram.exe 
 
 # Build rule
