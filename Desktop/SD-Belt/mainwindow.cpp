@@ -12,7 +12,7 @@
 
 
 #define ProjectName "SD-Belt"
-#define ServerAddr "http://192.168.1.101"
+#define ServerAddr "http://192.168.36.229"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -69,6 +69,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->DashboardButton, &QPushButton::clicked, this, &MainWindow::OnDashboardButtonClicked);
     connect(ui->CamerasButton, &QPushButton::clicked, this, &MainWindow::OnCamerasButtonClicked);
     connect(ui->LogsButton, &QPushButton::clicked, this, &MainWindow::OnLogsButtonClicked);
+    connect(ui->ReverseButton, &QPushButton::clicked, this, &MainWindow::OnReverseTheFlowClicked);
+    connect(ui->NotifyButton, &QPushButton::clicked, this, &MainWindow::OnNotifyAdminClicked);
+    connect(ui->EmergencyStopButton, &QPushButton::clicked, this, &MainWindow::OnEmergencyStopClicked);
 
     // Populating Log, dummy
     for(int i = 0; i < 20; i++)
@@ -80,28 +83,28 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Network Test
 
-    QUrl getUrl(QString("%1:8080/status").arg(ServerAddr));
-    QUrl postUrl(QString("%1:8080/echo").arg(ServerAddr));
+    // QUrl getUrl(QString("%1:8080/status").arg(ServerAddr));
+    // QUrl postUrl(QString("%1:8080/echo").arg(ServerAddr));
 
-    // Get Server Status
-    QNetworkRequest getRequest(getUrl);
-    QNetworkReply *getReply = NetworkManager->get(getRequest);
-    connect(getReply, &QNetworkReply::finished, this, [=]() {
-        QString response = getReply->readAll();
-        qDebug() << "[GET /status] Response:" << response;
-        getReply->deleteLater();
-    });
+    // // Get Server Status
+    // QNetworkRequest getRequest(getUrl);
+    // QNetworkReply *getReply = NetworkManager->get(getRequest);
+    // connect(getReply, &QNetworkReply::finished, this, [=]() {
+    //     QString response = getReply->readAll();
+    //     qDebug() << "[GET /status] Response:" << response;
+    //     getReply->deleteLater();
+    // });
 
-    // Send a POST request
-    QNetworkRequest postRequest(postUrl);
-    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    // // Send a POST request
+    // QNetworkRequest postRequest(postUrl);
+    // postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-    QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
-    connect(postReply, &QNetworkReply::finished, this, [=]() {
-        QString response = postReply->readAll();
-        qDebug() << "[POST /echo] Response:" << response;
-        postReply->deleteLater();
-    });
+    // QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
+    // connect(postReply, &QNetworkReply::finished, this, [=]() {
+    //     QString response = postReply->readAll();
+    //     qDebug() << "[POST /echo] Response:" << response;
+    //     postReply->deleteLater();
+    // });
 }
 MainWindow::~MainWindow()
 {
@@ -255,6 +258,7 @@ void MainWindow::OnLogsButtonClicked()
 
 void MainWindow::OnReverseTheFlowClicked()
 {
+    QUrl postUrl(QString("%1:8080/rev").arg(ServerAddr));
     QNetworkRequest postRequest(postUrl);
     postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
@@ -269,16 +273,19 @@ void MainWindow::OnReverseTheFlowClicked()
 
 void MainWindow::OnEmergencyStopClicked()
 {
-    QNetworkRequest postRequest(postUrl);
-    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+     QUrl postUrl(QString("%1:8080/stop").arg(ServerAddr));
+     QNetworkRequest postRequest(postUrl);
+     postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-    // Send the STOP command for immediate emergency stop
-    QNetworkReply *postReply = NetworkManager->post(postRequest, "STOP\n");
-    connect(postReply, &QNetworkReply::finished, this, [=]() {
-        QString response = postReply->readAll();
-        qDebug() << "[POST /echo] Response:" << response;
-        postReply->deleteLater();
-    });
+     // Send the STOP command for immediate emergency stop
+     QNetworkReply *postReply = NetworkManager->post(postRequest, "STOP\n");
+     connect(postReply, &QNetworkReply::finished, this, [=]() {
+         QString response = postReply->readAll();
+         qDebug() << "[POST /echo] Response:" << response;
+         postReply->deleteLater();
+     });
+
+
 }
 void MainWindow::OnNotifyAdminClicked()
 {
