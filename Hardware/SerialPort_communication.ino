@@ -193,12 +193,6 @@ void processCommand(String command)
       Serial.println("ERR:Invalid direction. Use 1 (forward) or -1 (reverse)");
     }
   }
-  else if (cmd == "REV")
-  {
-    currentDirection = -currentDirection;
-    applyMotorControl();
-    Serial.println(currentDirection == 1 ? "OK:REV:Forward" : "OK:REV:Reverse");
-  }
   else if (cmd == "STATUS")
   {
     String dirText = (currentDirection == 1) ? "Forward" : "Reverse";

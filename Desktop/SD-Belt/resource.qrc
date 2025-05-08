@@ -14,5 +14,7 @@
         <file>styles/DashboardActionButton.qss</file>
         <file>styles/img/IncreaseArrow.png</file>
         <file>styles/img/Ellipse.png</file>
+        <file>styles/MenuButton.qss</file>
+        <file>styles/MenuButtonSelected.qss</file>
     </qresource>
 </RCC>

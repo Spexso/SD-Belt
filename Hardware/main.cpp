@@ -110,7 +110,7 @@ private:
 				return arduino->stopImmediate();
 
 			if (cmd == "reverse")
-				return arduino->reverseDirection();
+				return arduino->setDirection(-1);
 
 			if (cmd == "status")
 				return arduino->getStatus();

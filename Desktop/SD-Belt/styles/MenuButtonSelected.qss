@@ -1,0 +1,21 @@
+QPushButton {
+    background-color: transparent;
+    color: black;
+    border: none;
+    text-align: left;
+    padding: 10px 15px 10px;
+    font-size: 16px;
+    font-weight: 500;
+    background-color: #1abc9c; /* dark hover background */
+    color: white;
+}
+
+QPushButton:hover {
+    background-color: #1abc9c; /* dark hover background */
+    color: white;
+}
+
+QPushButton:pressed {
+    background-color: #1abc9c;  /* active click background */
+    color: white;
+}

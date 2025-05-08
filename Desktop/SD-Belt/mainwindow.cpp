@@ -5,6 +5,8 @@
 #include <QDir>
 #include <QPixmap>
 
+#include "StyleLoader.h"
+
 // Network
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
@@ -12,7 +14,7 @@
 
 
 #define ProjectName "SD-Belt"
-#define ServerAddr "http://192.168.36.229"
+#define ServerAddr "http://10.1.249.58"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -64,6 +66,17 @@ MainWindow::MainWindow(QWidget *parent)
 
     SetupHeader();
     SetupLogoOverlay();
+    loadGlobalStyles();
+
+    QFile menuStyle(":/styles/MenuButton.qss");
+    if (menuStyle.open(QFile::ReadOnly | QFile::Text))
+    {
+        QString style = menuStyle.readAll();
+
+        ui->DashboardButton->setStyleSheet(style);
+        ui->CamerasButton->setStyleSheet(style);
+        ui->LogsButton->setStyleSheet(style);
+    }
 
     // Button Setup
     connect(ui->DashboardButton, &QPushButton::clicked, this, &MainWindow::OnDashboardButtonClicked);
@@ -81,31 +94,23 @@ MainWindow::MainWindow(QWidget *parent)
         ui->LogList->addItem(item);
     }
 
-    // Network Test
+    connect(ui->DashboardButton, &QPushButton::clicked, this, [=]() {
+        ui->StackedWidget->setCurrentIndex(0); // Go to first page
+    });
 
-    // QUrl getUrl(QString("%1:8080/status").arg(ServerAddr));
-    // QUrl postUrl(QString("%1:8080/echo").arg(ServerAddr));
+    connect(ui->CamerasButton, &QPushButton::clicked, this, [=]() {
+        ui->StackedWidget->setCurrentIndex(1); // Go to second page
+    });
 
-    // // Get Server Status
-    // QNetworkRequest getRequest(getUrl);
-    // QNetworkReply *getReply = NetworkManager->get(getRequest);
-    // connect(getReply, &QNetworkReply::finished, this, [=]() {
-    //     QString response = getReply->readAll();
-    //     qDebug() << "[GET /status] Response:" << response;
-    //     getReply->deleteLater();
-    // });
+    connect(ui->LogsButton, &QPushButton::clicked, this, [=]() {
+        ui->StackedWidget->setCurrentIndex(2); // Go to third page
+    });
 
-    // // Send a POST request
-    // QNetworkRequest postRequest(postUrl);
-    // postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    connect(ui->SpeedAdjuster, &QSlider::valueChanged, this, &MainWindow::OnSpeedAdjusted);
 
-    // QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
-    // connect(postReply, &QNetworkReply::finished, this, [=]() {
-    //     QString response = postReply->readAll();
-    //     qDebug() << "[POST /echo] Response:" << response;
-    //     postReply->deleteLater();
-    // });
+    ui->DashboardButton->click();
 }
+
 MainWindow::~MainWindow()
 {
     delete ui;
@@ -123,6 +128,13 @@ void MainWindow::SetupHeader()
     }
 
     HeaderStyle.close();
+}
+
+void MainWindow::setActiveButton(QPushButton *active)
+{
+    QList<QPushButton*> buttons = { ui->DashboardButton, ui->CamerasButton, ui->LogsButton };
+    for (QPushButton *btn : buttons)
+        btn->setStyleSheet(btn == active ? MenuButtonSelectedStyle : MenuButtonStyle);
 }
 
 void MainWindow::SetupLogoOverlay()
@@ -166,12 +178,15 @@ void MainWindow::SetupDashboardOverlay(QFile& HeaderStyle)
 void MainWindow::OnDashboardButtonClicked()
 {
     // Switch Page/Tab Logic
+    setActiveButton(ui->DashboardButton);
 }
 
 
 // ---- CAMERA SECTION ----
 void MainWindow::OnCamerasButtonClicked()
 {
+    setActiveButton(ui->CamerasButton);
+
     // Camera URL's
     cameraUrls = {
         "ws://localhost:8765",
@@ -254,6 +269,7 @@ void MainWindow::updateCameraView()
 void MainWindow::OnLogsButtonClicked()
 {
     // Switch Page/Tab Logic
+    setActiveButton(ui->LogsButton);
 }
 
 void MainWindow::OnReverseTheFlowClicked()
@@ -285,6 +301,24 @@ void MainWindow::OnEmergencyStopClicked()
          postReply->deleteLater();
      });
 }
+
+void MainWindow::OnSpeedAdjusted(int value)
+{
+    QString command = QString::number(value);
+
+    QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
+    QNetworkRequest postRequest(postUrl);
+    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+
+    QNetworkReply *postReply = NetworkManager->post(postRequest, command.toUtf8());
+    connect(postReply, &QNetworkReply::finished, this, [=]() {
+        QString response = postReply->readAll();
+        qDebug() << "[POST /speed] Response:" << response;
+        postReply->deleteLater();
+    });
+
+    ui->SpeedPercent->setText(QString("% %1").arg(value));}
+
 
 void MainWindow::OnNotifyAdminClicked()
 {

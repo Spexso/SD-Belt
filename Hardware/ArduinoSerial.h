@@ -102,13 +102,6 @@ public:
 	std::string setDirection(int direction);
 
 	/**
-	 * Reverse the current direction of the motor
-	 *
-	 * @return The response from Arduino
-	 */
-	std::string reverseDirection();
-
-	/**
 	 * Set the servo angle (0-180 degrees)
 	 *
 	 * @param angle Servo angle

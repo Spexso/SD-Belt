@@ -46,6 +46,9 @@ private:
 
 private slots:
 
+    void setActiveButton(QPushButton *active);
+    void OnSpeedAdjusted(int value);
+
     void OnDashboardButtonClicked();
     void OnCamerasButtonClicked();
     void OnLogsButtonClicked();
