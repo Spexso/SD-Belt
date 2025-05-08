@@ -284,9 +284,8 @@ void MainWindow::OnEmergencyStopClicked()
          qDebug() << "[POST /echo] Response:" << response;
          postReply->deleteLater();
      });
-
-
 }
+
 void MainWindow::OnNotifyAdminClicked()
 {
     // Send a POST request

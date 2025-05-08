@@ -29,33 +29,52 @@ public:
 	HttpServerHandler(ArduinoSerial *arduinoPtr)
 		: arduino(arduinoPtr) {}
 
-		void Init()
-		{
-			// Setup logger to print every request
-			server.set_logger([](const httplib::Request &req, const httplib::Response &res) {
+	void Init()
+	{
+		// Setup logger to print every request
+		server.set_logger([](const httplib::Request &req, const httplib::Response &res)
+						  {
 				std::cout << "[HTTP] " << req.method << " " << req.path
 						  << " => " << res.status << std::endl;
 		
 				if (!req.body.empty())
 				{
 					std::cout << "  Body: " << req.body << std::endl;
-				}
-			});
-		
-			// Setup endpoints
-			server.Post("/rev", [this](const httplib::Request &, httplib::Response &res)
-						{
+				} });
+
+		// Setup endpoints
+		server.Post("/rev", [this](const httplib::Request &, httplib::Response &res)
+					{
 				std::string response = handleCommand("reverse");
 				std::cout << "[/rev] Response: " << response << std::endl;
 				res.set_content(response, "text/plain"); });
-		
-			server.Post("/stop", [this](const httplib::Request &, httplib::Response &res)
-						{
+
+		server.Post("/stop", [this](const httplib::Request &, httplib::Response &res)
+					{
 				std::string response = handleCommand("stop");
 				std::cout << "[/stop] Response: " << response << std::endl;
 				res.set_content(response, "text/plain"); });
-		}
-		
+
+		server.Post("/speed", [this](const httplib::Request &req, httplib::Response &res)
+					{
+					std::string body = req.body;
+					std::cout << "[/speed] Received body: " << body << std::endl;
+				
+					try
+					{
+						int percent = std::stoi(body);
+						std::string response = arduino->setSpeed(percent);
+						std::cout << "[/speed] Response: " << response << std::endl;
+						res.set_content(response, "text/plain");
+					}
+					catch (const std::exception &e)
+					{
+						std::string error = std::string("ERR: Invalid speed value - ") + e.what();
+						std::cerr << "[/speed] " << error << std::endl;
+						res.set_content(error, "text/plain");
+						res.status = 400;
+					} });
+	}
 
 	void Start()
 	{
@@ -82,29 +101,44 @@ private:
 		if (!arduino->isConnected())
 			return "Arduino not connected.";
 
-		std::string serialCommand;
+		try
+		{
+			if (cmd == "start")
+				return arduino->start(5); // Example ramp rate
 
-		if (cmd == "start")
-			serialCommand = "START\n";
-		else if (cmd == "stop")
-			serialCommand = "STOP\n";
-		else if (cmd == "reverse")
-			serialCommand = "REV\n";
-		else if (cmd == "status")
-			serialCommand = "STATUS\n";
-		else if (cmd.rfind("speed=", 0) == 0)
-			serialCommand = "PCT:" + cmd.substr(6) + "\n";
-		else if (cmd.rfind("servo=", 0) == 0)
-			serialCommand = "SERVO:" + cmd.substr(6) + "\n";
-		else if (cmd == "dir=1")
-			serialCommand = "DIR:1\n";
-		else if (cmd == "dir=-1")
-			serialCommand = "DIR:-1\n";
-		else
+			if (cmd == "stop")
+				return arduino->stopImmediate();
+
+			if (cmd == "reverse")
+				return arduino->reverseDirection();
+
+			if (cmd == "status")
+				return arduino->getStatus();
+
+			if (cmd.rfind("speed=", 0) == 0)
+			{
+				int pct = std::stoi(cmd.substr(6));
+				return arduino->setSpeed(pct);
+			}
+
+			if (cmd.rfind("servo=", 0) == 0)
+			{
+				int angle = std::stoi(cmd.substr(6));
+				return arduino->setServoAngle(angle);
+			}
+
+			if (cmd == "dir=1")
+				return arduino->setDirection(1);
+
+			if (cmd == "dir=-1")
+				return arduino->setDirection(-1);
+
 			return "ERR: Unknown command";
-
-		std::string response = arduino->sendCommand(serialCommand);
-		return response.empty() ? "No response from Arduino." : response;
+		}
+		catch (const std::exception &e)
+		{
+			return std::string("ERR: Invalid argument - ") + e.what();
+		}
 	}
 };
 
@@ -136,9 +170,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	std::thread serverThread([&serverHandler]() {
-		serverHandler.Start();
-	});
+	std::thread serverThread([&serverHandler]()
+							 { serverHandler.Start(); });
 
 	while (running)
 	{

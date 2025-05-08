@@ -1,5 +1,7 @@
 .vscode
 
+/Hardware/httplib.h
+
 # sd-belt-server - java spring
 
 HELP.md
