@@ -8,5 +8,11 @@
         <file>styles/img/CamerasLogo.png</file>
         <file>styles/img/DashboardLogo.png</file>
         <file>styles/img/LogsLogo.png</file>
+        <file>styles/img/Notify.png</file>
+        <file>styles/img/ReverseTheFlow.png</file>
+        <file>styles/img/Stop.png</file>
+        <file>styles/DashboardActionButton.qss</file>
+        <file>styles/img/IncreaseArrow.png</file>
+        <file>styles/img/Ellipse.png</file>
     </qresource>
 </RCC>

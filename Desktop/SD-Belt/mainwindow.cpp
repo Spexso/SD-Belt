@@ -5,6 +5,11 @@
 #include <QDir>
 #include <QPixmap>
 
+// Network
+#include <QNetworkAccessManager>
+#include <QNetworkRequest>
+#include <QNetworkReply>
+
 
 #define ProjectName "SD-Belt"
 
@@ -55,13 +60,46 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     SetupHeader();
+    SetupLogoOverlay();
 
     // Button Setup
     connect(ui->DashboardButton, &QPushButton::clicked, this, &MainWindow::OnDashboardButtonClicked);
     connect(ui->CamerasButton, &QPushButton::clicked, this, &MainWindow::OnCamerasButtonClicked);
     connect(ui->LogsButton, &QPushButton::clicked, this, &MainWindow::OnLogsButtonClicked);
 
+    // Populating Log, dummy
+    for(int i = 0; i < 20; i++)
+    {
+        QListWidgetItem *item = new QListWidgetItem(ui->LogList);
+        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
+        ui->LogList->addItem(item);
+    }
 
+    // Network Test
+    // QNetworkAccessManager *manager = new QNetworkAccessManager(this);
+
+    // // Replace with the remote server's IP
+    // QUrl getUrl("http://192.168.1.42:8080/status");
+    // QNetworkRequest getRequest(getUrl);
+
+    // QNetworkReply *getReply = manager->get(getRequest);
+    // connect(getReply, &QNetworkReply::finished, this, [=]() {
+    //     QString response = getReply->readAll();
+    //     qDebug() << "[GET /status] Response:" << response;
+    //     getReply->deleteLater();
+    // });
+
+    // // Send a POST request
+    // QUrl postUrl("http://192.168.1.42:8080/echo");
+    // QNetworkRequest postRequest(postUrl);
+    // postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+
+    // QNetworkReply *postReply = manager->post(postRequest, "Hello from Qt client");
+    // connect(postReply, &QNetworkReply::finished, this, [=]() {
+    //     QString response = postReply->readAll();
+    //     qDebug() << "[POST /echo] Response:" << response;
+    //     postReply->deleteLater();
+    // });
 }
 MainWindow::~MainWindow()
 {
@@ -105,6 +143,14 @@ void MainWindow::SetupLogoOverlay()
 }
 
 void MainWindow::SetupSystemStatusOverlay(QFile& HeaderStyle)
+{
+    // Setup System Status
+    QString Style = HeaderStyle.readAll();
+    ui->SystemIndicator->setStyleSheet(Style);
+    ui->SystemMessage->setStyleSheet(Style);
+}
+
+void MainWindow::SetupDashboardOverlay(QFile& HeaderStyle)
 {
     // Setup System Status
     QString Style = HeaderStyle.readAll();

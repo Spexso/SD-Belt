@@ -20,14 +20,14 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+
 protected:
 
     // Style
     void SetupHeader();
     void SetupLogoOverlay();
     void SetupSystemStatusOverlay(QFile &HeaderStyle);
-
-
+    void SetupDashboardOverlay(QFile &HeaderStyle);
 
 private:
 
