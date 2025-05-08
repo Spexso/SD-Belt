@@ -49,5 +49,9 @@ private slots:
     void OnDashboardButtonClicked();
     void OnCamerasButtonClicked();
     void OnLogsButtonClicked();
+
+    void OnReverseTheFlowClicked();
+    void OnEmergencyStopClicked();
+    void OnNotifyAdminClicked();
 };
 #endif // MAINWINDOW_H

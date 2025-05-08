@@ -252,3 +252,44 @@ void MainWindow::OnLogsButtonClicked()
 {
     // Switch Page/Tab Logic
 }
+
+void MainWindow::OnReverseTheFlowClicked()
+{
+    QNetworkRequest postRequest(postUrl);
+    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+
+    // Send the REV command to reverse motor direction
+    QNetworkReply *postReply = NetworkManager->post(postRequest, "REV\n");
+    connect(postReply, &QNetworkReply::finished, this, [=]() {
+        QString response = postReply->readAll();
+        qDebug() << "[POST /echo] Response:" << response;
+        postReply->deleteLater();
+    });
+}
+
+void MainWindow::OnEmergencyStopClicked()
+{
+    QNetworkRequest postRequest(postUrl);
+    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+
+    // Send the STOP command for immediate emergency stop
+    QNetworkReply *postReply = NetworkManager->post(postRequest, "STOP\n");
+    connect(postReply, &QNetworkReply::finished, this, [=]() {
+        QString response = postReply->readAll();
+        qDebug() << "[POST /echo] Response:" << response;
+        postReply->deleteLater();
+    });
+}
+void MainWindow::OnNotifyAdminClicked()
+{
+    // Send a POST request
+    //QNetworkRequest postRequest(postUrl);
+    //postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+
+    //QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
+    //connect(postReply, &QNetworkReply::finished, this, [=]() {
+    //    QString response = postReply->readAll();
+    //    qDebug() << "[POST /echo] Response:" << response;
+    //    postReply->deleteLater();
+    //});
+}
