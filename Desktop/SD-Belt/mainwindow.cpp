@@ -12,6 +12,7 @@
 
 
 #define ProjectName "SD-Belt"
+#define ServerAddr "http://192.168.1.101"
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -19,7 +20,10 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
+    NetworkManager = new QNetworkAccessManager(this);
+
     // qDebug() << "Current working dir:" << QDir::currentPath();
+
     // Load QSS style file for verticalWidget
     QFile MainWindowStyle(":/styles/MainWindow.qss");
     MainWindowStyle.setObjectName("MainWindowStyle");
@@ -29,7 +33,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     ResourceStyles.append(&MainWindowStyle);
     ResourceStyles.append(&CentralWindowStyle);
-
 
     for (QFile* StyleFile : std::as_const(ResourceStyles))
     {
@@ -76,30 +79,29 @@ MainWindow::MainWindow(QWidget *parent)
     }
 
     // Network Test
-    // QNetworkAccessManager *manager = new QNetworkAccessManager(this);
 
-    // // Replace with the remote server's IP
-    // QUrl getUrl("http://192.168.1.42:8080/status");
-    // QNetworkRequest getRequest(getUrl);
+    QUrl getUrl(QString("%1:8080/status").arg(ServerAddr));
+    QUrl postUrl(QString("%1:8080/echo").arg(ServerAddr));
 
-    // QNetworkReply *getReply = manager->get(getRequest);
-    // connect(getReply, &QNetworkReply::finished, this, [=]() {
-    //     QString response = getReply->readAll();
-    //     qDebug() << "[GET /status] Response:" << response;
-    //     getReply->deleteLater();
-    // });
+    // Get Server Status
+    QNetworkRequest getRequest(getUrl);
+    QNetworkReply *getReply = NetworkManager->get(getRequest);
+    connect(getReply, &QNetworkReply::finished, this, [=]() {
+        QString response = getReply->readAll();
+        qDebug() << "[GET /status] Response:" << response;
+        getReply->deleteLater();
+    });
 
-    // // Send a POST request
-    // QUrl postUrl("http://192.168.1.42:8080/echo");
-    // QNetworkRequest postRequest(postUrl);
-    // postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    // Send a POST request
+    QNetworkRequest postRequest(postUrl);
+    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-    // QNetworkReply *postReply = manager->post(postRequest, "Hello from Qt client");
-    // connect(postReply, &QNetworkReply::finished, this, [=]() {
-    //     QString response = postReply->readAll();
-    //     qDebug() << "[POST /echo] Response:" << response;
-    //     postReply->deleteLater();
-    // });
+    QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
+    connect(postReply, &QNetworkReply::finished, this, [=]() {
+        QString response = postReply->readAll();
+        qDebug() << "[POST /echo] Response:" << response;
+        postReply->deleteLater();
+    });
 }
 MainWindow::~MainWindow()
 {

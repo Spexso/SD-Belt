@@ -3,6 +3,7 @@
 
 #include <QMainWindow>
 #include <QFile>
+#include "qnetworkaccessmanager.h"
 #include "webcamwidget.h"
 #include <QPushButton>
 
@@ -17,9 +18,9 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
+
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-
 
 protected:
 
@@ -32,6 +33,7 @@ protected:
 private:
 
     Ui::MainWindow *ui;
+    QNetworkAccessManager *NetworkManager;
     QVector<QFile*> ResourceStyles;
 
     // Camera
@@ -41,7 +43,6 @@ private:
     QPushButton *prevButton = nullptr;
     QPushButton *nextButton = nullptr;
     void updateCameraView();
-
 
 private slots:
 
