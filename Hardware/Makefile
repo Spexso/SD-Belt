@@ -4,7 +4,7 @@ CXXFLAGS = -Wall -std=c++17
 
 # Source and target
 SRC = main.cpp ArduinoSerial.cpp ArduinoSerial.h httplib.h
-TARGET = myprogram.exe 
+TARGET = app 
 
 # Build rule
 all: $(TARGET)
