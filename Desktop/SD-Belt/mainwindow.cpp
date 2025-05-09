@@ -106,7 +106,8 @@ MainWindow::MainWindow(QWidget *parent)
         ui->StackedWidget->setCurrentIndex(2); // Go to third page
     });
 
-    connect(ui->SpeedAdjuster, &QSlider::valueChanged, this, &MainWindow::OnSpeedAdjusted);
+    connect(ui->SpeedAdjuster, &QSlider::sliderReleased, this, &MainWindow::OnSpeedAdjusted);
+    connect(ui->SpeedAdjuster, &QSlider::valueChanged, this, &MainWindow::OnSpeedChanged);
 
     ui->DashboardButton->click();
 }
@@ -302,23 +303,36 @@ void MainWindow::OnEmergencyStopClicked()
      });
 }
 
-void MainWindow::OnSpeedAdjusted(int value)
+void MainWindow::OnSpeedAdjusted()
 {
-    QString command = QString::number(value);
+    if(ui->SpeedAdjuster)
+    {
+        int value = ui->SpeedAdjuster->value();
+        QString command = QString::number(value);
 
-    QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
-    QNetworkRequest postRequest(postUrl);
-    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+        QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
+        QNetworkRequest postRequest(postUrl);
+        postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-    QNetworkReply *postReply = NetworkManager->post(postRequest, command.toUtf8());
-    connect(postReply, &QNetworkReply::finished, this, [=]() {
-        QString response = postReply->readAll();
-        qDebug() << "[POST /speed] Response:" << response;
-        postReply->deleteLater();
-    });
+        QNetworkReply *postReply = NetworkManager->post(postRequest, command.toUtf8());
+        connect(postReply, &QNetworkReply::finished, this, [=]() {
+            QString response = postReply->readAll();
+            qDebug() << "[POST /speed] Response:" << response;
+            postReply->deleteLater();
+        });
 
-    ui->SpeedPercent->setText(QString("% %1").arg(value));}
+        ui->SpeedPercent->setText(QString("% %1").arg(value));
+    }
+}
 
+void MainWindow::OnSpeedChanged(int value)
+{
+    if(ui->SpeedAdjuster)
+    {
+        int value = ui->SpeedAdjuster->value();
+        ui->SpeedPercent->setText(QString("% %1").arg(value));
+    }
+}
 
 void MainWindow::OnNotifyAdminClicked()
 {

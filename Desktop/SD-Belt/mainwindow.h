@@ -42,12 +42,15 @@ private:
     int currentCameraIndex = 0;
     QPushButton *prevButton = nullptr;
     QPushButton *nextButton = nullptr;
-    void updateCameraView();
+
 
 private slots:
 
+    void updateCameraView();
+
     void setActiveButton(QPushButton *active);
-    void OnSpeedAdjusted(int value);
+    void OnSpeedAdjusted();
+    void OnSpeedChanged(int value);
 
     void OnDashboardButtonClicked();
     void OnCamerasButtonClicked();
