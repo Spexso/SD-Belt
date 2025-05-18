@@ -22,6 +22,7 @@
 
 std::atomic_int active_cameras(CAMERAS); 
 
+std::atomic_bool system_ready(false); // Seko delay için flag
 
 
 std::atomic_bool all_cameras_done(false);
@@ -563,6 +564,10 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
     cv::Mat background;
     cap.read(background);                       // ilk kareyi çek
     auto [leftX, rightX] = firstVerticalLineXsFromCenter(background);
+    if (leftX == -1 && rightX == -1){
+		leftX = 0;
+		rightX = 640;
+		}
     std::cout << "Left X: "  << leftX
               << ", Right X: " << rightX << '\n';
               
@@ -581,11 +586,11 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
             else if(buf.camId == 1){
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
-            /*
+            
             else if(buf.camId == 2){
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
-            * */
+            
     
 
         cv::Point2d difference;
@@ -604,9 +609,18 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         
         
     // — 2) Sürekli okuma, kırpma ve paylaşılan arabellek —
+    
     while (run) {
         cv::Mat frame;
+        // frame is a cv::Mat that already contains your BGR pixels
+
+		
         if (!cap.read(frame) || frame.empty()) break;
+        
+        // size_t rawBytes = frame.total() * frame.elemSize();   // rows*cols*channels
+		
+		// std::cout << "size" << rawBytes << std::endl;
+        
         Test = detectFirstVerticalLinesFromCenter(background); // çizgileri görmek için kullanıyoruz
         cv::Mat cropped = cropBetweenXs(frame, leftX, rightX);
 
@@ -619,12 +633,12 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
                 mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
-            /*
+            
             else if(buf.camId == 2){
-                mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
+                mean_frame = whiteOutSameTone(frame, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
-            * */
+            
             
             
             difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
@@ -711,18 +725,18 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     
     buffer0.camId = 0;
     buffer1.camId = 1;
-    // buffer2.camId = 2;
+    buffer2.camId = 2;
     
     std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),target_width, target_height);
     std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),target_width, target_height);
-    // std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),target_width, target_height);
+    std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),target_width, target_height);
     
     cv::namedWindow("Cam0", cv::WINDOW_NORMAL);
     cv::namedWindow("Cam1", cv::WINDOW_NORMAL);
-    //cv::namedWindow("Cam2", cv::WINDOW_NORMAL);
+    cv::namedWindow("Cam2", cv::WINDOW_NORMAL);
     cv::moveWindow("Cam0", 50, 50);
     cv::moveWindow("Cam1", 420, 50);
-    //cv::moveWindow("Cam2", 640, 50);
+    cv::moveWindow("Cam2", 640, 50);
     
     
     
@@ -734,12 +748,11 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             if (!buffer0.frame.empty())
                 cv::imshow("Cam0", buffer0.frame);
             
-            if (buffer0.object_detection == true) {
-            
-            auto preprocessed_frame_item = create_preprocessed_frame_item(buffer0.frame, target_width, target_height);
-            preprocessed_queue->push(preprocessed_frame_item);
-            std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
-            buffer0.object_detection = false;
+            if (system_ready.load() && buffer0.object_detection == true) { // seko system_ready.load() attı başlangıç delayı için
+				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer0.frame, target_width, target_height);
+				preprocessed_queue->push(preprocessed_frame_item);
+				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				buffer0.object_detection = false;
             } 
             
         }
@@ -748,29 +761,29 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             if (!buffer1.frame.empty())
                 cv::imshow("Cam1", buffer1.frame);
             
-            if (buffer1.object_detection == true){
-            auto preprocessed_frame_item = create_preprocessed_frame_item(buffer1.frame, target_width, target_height);
-            preprocessed_queue->push(preprocessed_frame_item);
-            std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
-            buffer1.object_detection = false;
+            if (system_ready.load() && buffer1.object_detection == true){ // seko system_ready.load() attı başlangıç delayı için
+				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer1.frame, target_width, target_height);
+				preprocessed_queue->push(preprocessed_frame_item);
+				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				buffer1.object_detection = false;
             } 
             
         }
-        /*
+        
         {
             std::lock_guard<std::mutex> lk(buffer2.m);
             if (!buffer2.frame.empty())
                 cv::imshow("Cam2", buffer2.frame);
             
-            if (buffer2.object_detection == true){
-            auto preprocessed_frame_item = create_preprocessed_frame_item(buffer2.frame, target_width, target_height);
-            preprocessed_queue->push(preprocessed_frame_item);
-            std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
-            buffer2.object_detection = false;
+            if (system_ready.load() && buffer2.object_detection == true){ // seko system_ready.load() attı başlangıç delayı için
+				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer2.frame, target_width, target_height);
+				preprocessed_queue->push(preprocessed_frame_item);
+				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				buffer2.object_detection = false;
             } 
             
         }
-        */
+        
 
         if (c == 27){
             running = false;
@@ -779,7 +792,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
 
     t0.join();
     t1.join();
-    // t2.join();
+    t2.join();
     
     cv::destroyAllWindows();
     preprocessed_queue->stop(); // queue'yu durdur
@@ -849,7 +862,13 @@ int main(int argc, char** argv)
                                 std::ref(capture),
                                 class_count,
                                 fps);
-
+                                
+	// Seko delay baslangic
+	std::this_thread::sleep_for(std::chrono::seconds(ImageInterface::STARTUP_DELAY_SECONDS));
+	system_ready = true;   
+	// Seko delay sonu
+	
+	
     hailo_status status = wait_and_check_threads(
         preprocess_thread,    "Preprocess",
         inference_thread,     "Inference",
