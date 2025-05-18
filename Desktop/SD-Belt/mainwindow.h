@@ -4,7 +4,6 @@
 #include <QMainWindow>
 #include <QFile>
 #include "qnetworkaccessmanager.h"
-#include "webcamwidget.h"
 #include <QPushButton>
 
 QT_BEGIN_NAMESPACE
@@ -35,14 +34,6 @@ private:
     Ui::MainWindow *ui;
     QNetworkAccessManager *NetworkManager;
     QVector<QFile*> ResourceStyles;
-
-    // Camera
-    WebcamWidget *webcam = nullptr;
-    QStringList cameraUrls;
-    int currentCameraIndex = 0;
-    QPushButton *prevButton = nullptr;
-    QPushButton *nextButton = nullptr;
-
 
 private slots:
 

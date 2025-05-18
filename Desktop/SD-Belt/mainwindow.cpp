@@ -194,83 +194,95 @@ void MainWindow::OnCamerasButtonClicked()
 {
     setActiveButton(ui->CamerasButton);
 
-    // Camera URL's
-    cameraUrls = {
-        "ws://localhost:8765",
-        "ws://192.168.1.101:8765"
-    };
+    // // Camera URL's
+    // cameraUrls = {
+    //     "ws://localhost:8765",
+    //     "ws://192.168.1.101:8765"
+    // };
+    // QLayout* layoutBase = ui->centralwidget->layout(); // Parent layout
+    // QVBoxLayout* layout = nullptr;
 
-    QLayout *layoutBase = ui->cameraView->layout();
-    QVBoxLayout *layout = nullptr;
+    // if (!layoutBase)
+    // {
+    //     layout = new QVBoxLayout(ui->centralwidget);
+    //     ui->centralwidget->setLayout(layout);
+    // }
+    // else
+    // {
+    //     layout = qobject_cast<QVBoxLayout*>(layoutBase);
+    //     if (!layout)
+    //     {
+    //         delete layoutBase;
+    //         layout = new QVBoxLayout(ui->centralwidget);
+    //         ui->centralwidget->setLayout(layout);
+    //     }
+    // }
 
-    if (!layoutBase) {
-        layout = new QVBoxLayout(ui->cameraView);
-        ui->cameraView->setLayout(layout);
-    } else {
-        layout = qobject_cast<QVBoxLayout*>(layoutBase);
-        if (!layout) {
-            delete layoutBase;
-            layout = new QVBoxLayout(ui->cameraView);
-            ui->cameraView->setLayout(layout);
-        }
-    }
+    // // Clear existing layout content
+    // QLayoutItem* item;
+    // while ((item = layout->takeAt(0)) != nullptr)
+    // {
+    //     if (QWidget* w = item->widget())
+    //     {
+    //         w->deleteLater();
+    //     }
+    //     delete item;
+    // }
 
-    QLayoutItem *item;
-    while ((item = layout->takeAt(0)) != nullptr) {
-        if (QWidget *w = item->widget()) {
-            w->deleteLater();
-        }
-        delete item;
-    }
+    // // Create buttons and webcam widget
+    // prevButton = new QPushButton("◀", this);
+    // nextButton = new QPushButton("▶", this);
+    // webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
 
-    QWidget *rowContainer = new QWidget(this);
-    QHBoxLayout *rowLayout = new QHBoxLayout(rowContainer);
+    // connect(prevButton, &QPushButton::clicked, this, [=]() {
+    //     currentCameraIndex = (currentCameraIndex - 1 + cameraUrls.size()) % cameraUrls.size();
+    //     updateCameraView();
+    // });
 
-    rowLayout->setContentsMargins(0, 0, 0, 0);
-    rowLayout->setSpacing(0);
+    // connect(nextButton, &QPushButton::clicked, this, [=]() {
+    //     currentCameraIndex = (currentCameraIndex + 1) % cameraUrls.size();
+    //     updateCameraView();
+    // });
 
-    prevButton = new QPushButton("◀", this);
-    nextButton = new QPushButton("▶", this);
-    webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
+    // // Layout: Prev | cameraView | Next
+    // QHBoxLayout* centerRow = new QHBoxLayout();
+    // centerRow->setContentsMargins(0, 0, 0, 0);
+    // centerRow->setSpacing(0);
+    // centerRow->addWidget(prevButton);
+    // centerRow->addWidget(ui->cameraView);  // Keep as a container for WebcamWidget
+    // centerRow->addWidget(nextButton);
 
-    connect(prevButton, &QPushButton::clicked, this, [=]() {
-        currentCameraIndex = (currentCameraIndex - 1 + cameraUrls.size()) % cameraUrls.size();
-        updateCameraView();
-    });
+    // // Center the entire row in the parent layout
+    // QWidget* centerContainer = new QWidget(this);
+    // centerContainer->setLayout(centerRow);
 
-    connect(nextButton, &QPushButton::clicked, this, [=]() {
-        currentCameraIndex = (currentCameraIndex + 1) % cameraUrls.size();
-        updateCameraView();
-    });
+    // layout->addStretch(1);
+    // layout->addWidget(centerContainer, 0, Qt::AlignCenter);
+    // layout->addStretch(1);
 
-    rowLayout->addWidget(prevButton);
-    rowLayout->addWidget(webcam);
-    rowLayout->addWidget(nextButton);
+    // // Set webcam inside cameraView
+    // QVBoxLayout* camLayout = new QVBoxLayout(ui->cameraView);
+    // camLayout->setContentsMargins(0, 0, 0, 0);
+    // camLayout->addWidget(webcam);
 
-    QHBoxLayout *containerLayout = new QHBoxLayout();
-    containerLayout->addStretch(1);
-    containerLayout->addWidget(rowContainer);
-    containerLayout->addStretch(1);
-
-    layout->addLayout(containerLayout);
 }
 
 void MainWindow::updateCameraView()
 {
-    if (!webcam || cameraUrls.isEmpty()) return;
+    // if (!webcam || cameraUrls.isEmpty()) return;
 
-    QWidget *rowContainer = webcam->parentWidget();
-    QHBoxLayout *rowLayout = qobject_cast<QHBoxLayout*>(rowContainer->layout());
-    if (!rowLayout) return;
+    // QWidget *rowContainer = webcam->parentWidget();
+    // QHBoxLayout *rowLayout = qobject_cast<QHBoxLayout*>(rowContainer->layout());
+    // if (!rowLayout) return;
 
-    int index = rowLayout->indexOf(webcam);
+    // int index = rowLayout->indexOf(webcam);
 
-    rowLayout->removeWidget(webcam);
-    webcam->deleteLater();
+    // rowLayout->removeWidget(webcam);
+    // webcam->deleteLater();
 
-    webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
+    // webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
 
-    rowLayout->insertWidget(index, webcam);
+    // rowLayout->insertWidget(index, webcam);
 }
 
 void MainWindow::OnLogsButtonClicked()

@@ -173,7 +173,7 @@
                   </rect>
                  </property>
                  <property name="sizePolicy">
-                  <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                  <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
                    <horstretch>0</horstretch>
                    <verstretch>0</verstretch>
                   </sizepolicy>
@@ -1176,20 +1176,20 @@ QSlider::add-page:horizontal {
              </widget>
             </widget>
             <widget class="QWidget" name="Cameras">
-             <widget class="QWidget" name="cameraView" native="true">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Maximum" vsizetype="Maximum">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+             <widget class="Receiver" name="widget_2" native="true">
               <property name="geometry">
                <rect>
-                <x>-1</x>
-                <y>-1</y>
-                <width>2081</width>
-                <height>1241</height>
+                <x>0</x>
+                <y>0</y>
+                <width>1681</width>
+                <height>811</height>
                </rect>
-              </property>
-              <property name="sizePolicy">
-               <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
-                <horstretch>0</horstretch>
-                <verstretch>0</verstretch>
-               </sizepolicy>
               </property>
              </widget>
             </widget>
@@ -1222,6 +1222,14 @@ QSlider::add-page:horizontal {
    </property>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>Receiver</class>
+   <extends>QWidget</extends>
+   <header>CameraReceiver.h</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="resource.qrc"/>
  </resources>

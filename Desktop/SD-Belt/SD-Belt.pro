@@ -10,15 +10,15 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    CameraReceiver.cpp \
     StyleLoader.cpp \
     main.cpp \
-    mainwindow.cpp \
-    webcamwidget.cpp
+    mainwindow.cpp
 
 HEADERS += \
+    CameraReceiver.h \
     StyleLoader.h \
-    mainwindow.h \
-    webcamwidget.h
+    mainwindow.h
 
 FORMS += \
     mainwindow.ui
