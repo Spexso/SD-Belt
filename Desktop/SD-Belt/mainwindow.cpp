@@ -86,11 +86,17 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->NotifyButton, &QPushButton::clicked, this, &MainWindow::OnNotifyAdminClicked);
     connect(ui->EmergencyStopButton, &QPushButton::clicked, this, &MainWindow::OnEmergencyStopClicked);
 
+    QLinearGradient gradient(0, 0, 100, 0); // horizontal gradient
+    gradient.setColorAt(0.0, QColor(255, 0, 0, 0));    // Fully transparent red
+    gradient.setColorAt(1.0, QColor(255, 0, 0, 255));  // Fully opaque red
+
+    QBrush transparentBrush(gradient);
     // Populating Log, dummy
     for(int i = 0; i < 20; i++)
     {
         QListWidgetItem *item = new QListWidgetItem(ui->LogList);
         item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
+        item->setBackground(transparentBrush);
         ui->LogList->addItem(item);
     }
 
@@ -165,7 +171,7 @@ void MainWindow::SetupSystemStatusOverlay(QFile& HeaderStyle)
     // Setup System Status
     QString Style = HeaderStyle.readAll();
     ui->SystemIndicator->setStyleSheet(Style);
-    ui->SystemMessage->setStyleSheet(Style);
+    //ui->SystemMessage->setStyleSheet(Style);
 }
 
 void MainWindow::SetupDashboardOverlay(QFile& HeaderStyle)
@@ -286,6 +292,9 @@ void MainWindow::OnReverseTheFlowClicked()
         qDebug() << "[POST /echo] Response:" << response;
         postReply->deleteLater();
     });
+
+    ui->SpeedPercent->setText(QString("% %1").arg(0));
+    ui->SpeedAdjuster->setValue(0);
 }
 
 void MainWindow::OnEmergencyStopClicked()
@@ -301,6 +310,9 @@ void MainWindow::OnEmergencyStopClicked()
          qDebug() << "[POST /echo] Response:" << response;
          postReply->deleteLater();
      });
+
+     ui->SpeedPercent->setText(QString("% %1").arg(0));
+     ui->SpeedAdjuster->setValue(0);
 }
 
 void MainWindow::OnSpeedAdjusted()
@@ -329,7 +341,6 @@ void MainWindow::OnSpeedChanged(int value)
 {
     if(ui->SpeedAdjuster)
     {
-        int value = ui->SpeedAdjuster->value();
         ui->SpeedPercent->setText(QString("% %1").arg(value));
     }
 }

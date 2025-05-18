@@ -261,6 +261,9 @@
                    <pointsize>14</pointsize>
                   </font>
                  </property>
+                 <property name="styleSheet">
+                  <string notr="true">color: rgb(255, 255, 255);</string>
+                 </property>
                  <property name="text">
                   <string>System OK</string>
                  </property>
@@ -524,7 +527,7 @@ QPushButton:pressed#LogsButton {
              <enum>QFrame::Shape::StyledPanel</enum>
             </property>
             <property name="currentIndex">
-             <number>0</number>
+             <number>1</number>
             </property>
             <widget class="QWidget" name="Dashboard">
              <property name="sizePolicy">
@@ -534,6 +537,14 @@ QPushButton:pressed#LogsButton {
               </sizepolicy>
              </property>
              <widget class="QWidget" name="DashboardContent" native="true">
+              <property name="geometry">
+               <rect>
+                <x>0</x>
+                <y>0</y>
+                <width>1193</width>
+                <height>620</height>
+               </rect>
+              </property>
               <property name="sizePolicy">
                <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                 <horstretch>0</horstretch>
@@ -1168,10 +1179,10 @@ QSlider::add-page:horizontal {
              <widget class="QWidget" name="cameraView" native="true">
               <property name="geometry">
                <rect>
-                <x>160</x>
-                <y>160</y>
-                <width>1920</width>
-                <height>1080</height>
+                <x>-1</x>
+                <y>-1</y>
+                <width>2081</width>
+                <height>1241</height>
                </rect>
               </property>
               <property name="sizePolicy">
