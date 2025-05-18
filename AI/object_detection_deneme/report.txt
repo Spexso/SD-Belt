@@ -1,0 +1,44 @@
+
+
+
+This is the report of implementing 'h8l architecture .hef model running on hailo accelerator chip'
+
+repo link : "https://github.com/hailo-ai/Hailo-Application-Code-Examples/tree/main/runtime/cpp/object_detection"
+
+Note : this repo has h8 model but we have h8l (lite version architecture) 
+so we get the lite version compatible from following link:
+"https://github.com/hailo-ai/hailo_model_zoo/blob/master/docs/public_models/HAILO8L/HAILO8L_object_detection.rst"
+
+**SOME NOTES
+repo suggest installing libboost related packages like this:
+"apt install -y libboost-format-dev libboost-program-options-dev"
+
+but this after 
+"make -j$(nproc)"
+we got this error:
+"fatal error: boost/format.hpp no such file or directory"
+it turns out desired file is in core libboost-dev
+
+so we corrected way of installing libraries:
+"sudo apt install -y libboost-dev libboost-program-options-dev"
+
+
+!!! this is not tested but it is recommended to use absolute path
+
+give permission to download_resources.sh file for best practice 
+before "./download_resources.sh"
+"chmod -x download_resources.sh"
+
+instead of running :
+"./build.sh"
+
+"mkdir -p build && cd build"
+"cmake .."
+"make -j$(nproc)"
+
+example run (mind the '=' symbol and make sure there is no gap between)
+"./obj_det -hef=/home/sd_belt/object_detection_example/Hailo-Application-Code-Examples/runtime/cpp/object_detection/yolov8n.hef \ 
+-input=/home/sd_belt/object_detection_example/Hailo-Application-Code-Examples/runtime/cpp/object_detection/bus.jpg"
+
+**FUTURE WORK
+using the camera on rpi as input 
