@@ -14,6 +14,7 @@
 
 
 #include "image_interface.h"
+#include "udp_sender.hpp"
 
 
 
@@ -548,7 +549,7 @@ inline bool isCenterBetweenPoints(const cv::Point2d& p1,
 
 
 void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
-              uint32_t width, uint32_t height)
+              uint32_t width, uint32_t height, UdpSender udp)
 {
     cv::VideoCapture cap(camId, cv::CAP_V4L2);
     if (!cap.isOpened()) {
@@ -678,6 +679,8 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         {
             std::lock_guard<std::mutex> lk(buf.m);
             buf.frame = std::move(mean_frame);
+            
+            udp.send(buf.camId, frame);
         }
         
     }
@@ -727,9 +730,20 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     buffer1.camId = 1;
     buffer2.camId = 2;
     
-    std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),target_width, target_height);
-    std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),target_width, target_height);
-    std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),target_width, target_height);
+	UdpSender udp0("10.1.252.249", 5000);  
+	std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),
+               target_width, target_height, std::cref(udp0));
+    
+    
+	UdpSender udp1("10.1.252.249", 5000);  
+    std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),
+				target_width, target_height, std::cref(udp1));    
+    
+	UdpSender udp2("10.1.252.249", 5000);  
+    std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),
+				target_width, target_height, std::cref(udp2));    
+    
+    
     
     cv::namedWindow("Cam0", cv::WINDOW_NORMAL);
     cv::namedWindow("Cam1", cv::WINDOW_NORMAL);
@@ -874,6 +888,9 @@ int main(int argc, char** argv)
         inference_thread,     "Inference",
         output_parser_thread, "Postprocess "
     );
+    
+    // Serial communication loop here
+    
     if (HAILO_SUCCESS != status) {
         return status;
     }
@@ -889,49 +906,3 @@ int main(int argc, char** argv)
 
 
 
-/*
-void camera_continous_frames(uint32_t width, uint32_t height) {
-    cv::VideoCapture cap(0); 
-    if (!cap.isOpened()) {
-        std::cerr << "Kamera açılamadı!" << std::endl;
-        return;
-    }
-    
-    control = 1;
-
-    std::cout << "Kamera başlatıldı. Frame almak için 'q', çıkmak için 'ESC' tuşuna basın." << std::endl;
-
-    cv::Mat frame;
-    while (true) {
-        cap >> frame;
-        if (frame.empty()) {
-            std::cerr << "Boş frame alındı!" << std::endl;
-            continue;
-        }
-
-        cv::imshow("Kamera", frame);
-        char c = (char)cv::waitKey(1);
-
-        if (c == 'q' || c == 'Q') {
-            auto preprocessed_frame_item = create_preprocessed_frame_item(frame, width, height);
-            preprocessed_queue->push(preprocessed_frame_item);
-            std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
-        } 
-        else if (c == 27) { // ESC key
-            std::cout << "Kullanıcı çıkış yaptı.\n";
-            active_cameras --;
-            break;
-        }
-    }
-    
-    if(active_cameras == 0) {
-        all_cameras_done = true;
-    }
-
-    cap.release();
-    cv::destroyAllWindows();
-    preprocessed_queue->stop(); // queue'yu durdur
-    results_queue->stop(); // sonuç kuyruğunu da durdur
-    control = 0;
-}
-*/
