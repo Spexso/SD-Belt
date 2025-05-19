@@ -11,11 +11,21 @@
 #include <unistd.h>
 #include <vector>
 #include <filesystem>   // C++17 ile klasör yoksa oluşturmak için
-
+#include <fstream>   // <-- missing
+#include <sstream>   // if you keep to_json()
+#include <iomanip>  
+#include <utility> 
 
 #include "image_interface.h"
 #include "udp_sender.hpp"
+#include "Object_info.hpp"
 
+
+
+
+const std::string LOG_FILE = "../obj_det_stats.log";
+
+std::atomic_bool keep_logging{true};
 
 
 
@@ -27,6 +37,10 @@ std::atomic_bool system_ready(false); // Seko delay için flag
 
 
 std::atomic_bool all_cameras_done(false);
+
+
+
+
 
 
 
@@ -47,7 +61,95 @@ static std::unordered_map<int, std::chrono::steady_clock::time_point> last_captu
 constexpr auto CAPTURE_COOLDOWN = std::chrono::seconds(ImageInterface::COOLDOWN_SECONDS);
 
 
+struct CpuTimes { long long user, nice, system, idle; };
 
+
+double get_cpu_temp() {
+    std::ifstream t("/sys/class/thermal/thermal_zone0/temp");
+    double millideg;
+    if (t >> millideg) return millideg / 1000.0;   // °C
+    throw std::runtime_error("temp read failed");
+}
+
+
+
+CpuTimes read_proc_stat() {
+    std::ifstream f("/proc/stat");
+    std::string cpu;
+    CpuTimes ct{};
+    f >> cpu >> ct.user >> ct.nice >> ct.system >> ct.idle;
+    return ct;
+}
+
+double get_cpu_usage(int ms = 500) {
+    auto a = read_proc_stat();
+    std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    auto b = read_proc_stat();
+
+    long long idle   = b.idle  - a.idle;
+    long long totalA = a.user + a.nice + a.system + a.idle;
+    long long totalB = b.user + b.nice + b.system + b.idle;
+    long long total  = totalB - totalA;
+
+    return 100.0 * (total - idle) / total;  // %
+}
+
+struct MemInfo { long long free, total; };
+
+MemInfo get_mem() {
+    std::ifstream f("/proc/meminfo");
+    std::string key, unit;
+    long long val;
+    MemInfo m{};
+    while (f >> key >> val >> unit) {
+        if (key == "MemTotal:") m.total = val;
+        if (key == "MemAvailable:") m.free = val;
+        if (m.free && m.total) break;
+    }
+    // kB → MiB
+    m.total /= 1024; m.free /= 1024;
+    return m;
+}
+
+
+
+void log_system_stats()
+{
+    std::ofstream log(LOG_FILE, std::ios::app);
+    if (!log) {
+        std::cerr << "⚠️  Cannot open " << LOG_FILE << " for logging\n";
+        return;
+    }
+
+    while (keep_logging) {
+        /*  --- gather data --- */
+        double temp   = get_cpu_temp();
+        double cpuPct = get_cpu_usage();
+        MemInfo mem   = get_mem();
+
+        std::time_t tt = std::time(nullptr);
+        log << std::put_time(std::localtime(&tt), "%F %T") << ", "
+            << std::fixed << std::setprecision(1)
+            << temp << " °C, "
+            << cpuPct << " %, "
+            << mem.free << '/' << mem.total << " MiB free\n";
+
+        log.flush();
+        for (int i = 0; i < 50 && keep_logging; ++i)    
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+std::pair<std::string,bool> parse_class_string(const std::string& full)
+{
+	const auto pos = full.find('_');
+	if (pos == std::string::npos)
+	return {full, true};                // _ yoksa 'sağlıklı' varsay
+	const std::string base = full.substr(0, pos);
+	const std::string state = full.substr(pos + 1);
+	const bool healthy = (state != "Rotten" && state != "rotten");
+	return {base, healthy};
+}
 
 
 
@@ -138,46 +240,74 @@ hailo_status run_post_process(
         
 
          // ====== DEBUG CODE START ======
-        
-        std::cout << "======== FRAME " << i << " DETECTIONS ========" << std::endl;
-        if (bboxes.empty()) {
-            std::cout << "No objects detected in this frame." << std::endl;
-        } else {
-            std::cout << "Detected " << bboxes.size() << " objects:" << std::endl;
-            float max = 0.0;
-            std::string max_class_name;
-            for (size_t j = 0; j < bboxes.size(); j++) {
-                const auto& bbox = bboxes[j];
-                std::string class_name = get_coco_name_from_int(static_cast<int>(bbox.class_id));
-                float confidence = bbox.bbox.score * 100.0f;
-                
-                if(confidence > max){
-                    max = confidence;
-                    max_class_name = class_name;
-                }
-                
-                std::cout << j+1 << ". Class: " << class_name 
-                          << " (ID: " << bbox.class_id << ")"
-                          << " Confidence: " << std::fixed << std::setprecision(2) << confidence << "%"
-                          << " Position: [" 
-                          << bbox.bbox.x_min << ", " << bbox.bbox.y_min << ", " 
-                          << bbox.bbox.x_max << ", " << bbox.bbox.y_max << "]" 
-                          << std::endl;
-            }
-            class_names.push_back(max_class_name);
-            std::cout << max_class_name << " " << max << std::endl;
-        }
-        std::cout << "=======================================" << std::endl;
-        
+		std::cout << "======== FRAME " << i << " DETECTIONS ========\n";
+	
+		std::string max_class_name;
+		float max = -1.f;
+		
+		if (bboxes.empty()) {
+			std::cout << "No objects detected in this frame.\n";
+		} else {
+			std::cout << "Detected " << bboxes.size() << " objects:\n";
+			
+			
+			for (size_t j = 0; j < bboxes.size(); ++j) {
+				const auto &bbox = bboxes[j];
+				std::string class_name = get_coco_name_from_int(static_cast<int>(bbox.class_id));
+				float confidence = bbox.bbox.score * 100.f;
+
+				if (confidence > max) { max = confidence; max_class_name = class_name; }
+
+				std::cout << j + 1 << ". Class: " << class_name
+						  << " (ID: " << bbox.class_id << ")"
+						  << " Confidence: " << std::fixed << std::setprecision(2) << confidence << "%"
+						  << " Position: [" << bbox.bbox.x_min << ", " << bbox.bbox.y_min << ", "
+						  << bbox.bbox.x_max << ", " << bbox.bbox.y_max << "]\n";
+			}
+			class_names.push_back(max_class_name);
+			std::cout << "Top-confidence: " << max_class_name << " (" 
+					  << std::fixed << std::setprecision(2) << max << "%)\n";
+		}
+
+		// ====== DEBUG CODE END ======
+
+
+		// ========== OBJECT_INFO ==========
+		{
+			
+			auto [base_name, healthy] = parse_class_string(max_class_name);
+
+			object_info info(base_name,                 // sınıf
+							 static_cast<double>(max), // güven
+							 0,     //x
+							 0,    // y
+							 healthy);                  // is_healthy
+
+			std::cout << "[object_info] "
+					  << info.get_class() << ", conf "
+					  << info.get_confidence() << "%, ("
+					  << info.get_x() << ',' << info.get_y() << "), healthy="
+					  << std::boolalpha << info.get_is_healthy() << '\n';
+		}
+		// =================================
+
+
+
+       
+       
+       
+       
         if(class_names.size() == ImageInterface::CAMERA_NUMBER){
             std::string result = decide_class_of_frames(class_names);
             std::cout << result << std::endl;
             // mekanik_kol(result); // FOR FINAL RESULT, THIS WILL CONTROL MEKANIK_KOL (PROTOTYPE)
         }
         
-        // ====== DEBUG CODE END ======
         
         
+        
+        
+        // opencv rframe jpg formatında sıkıştırman gerekiyor
         draw_bounding_boxes(frame_to_draw, bboxes);
         
         std::filesystem::create_directories("photos");          // photos yoksa aç
@@ -850,6 +980,8 @@ int main(int argc, char** argv)
     cv::VideoCapture capture;
     size_t frame_count;
     InputType input_type;
+    
+     std::thread logger_thread(log_system_stats);
 
     CommandLineArgs args = parse_command_line_arguments(argc, argv);
     AsyncModelInfer model(args.detection_hef, results_queue);
@@ -883,11 +1015,17 @@ int main(int argc, char** argv)
 	// Seko delay sonu
 	
 	
+	
+	
     hailo_status status = wait_and_check_threads(
         preprocess_thread,    "Preprocess",
         inference_thread,     "Inference",
         output_parser_thread, "Postprocess "
     );
+    
+    keep_logging = false;
+    if (logger_thread.joinable()) logger_thread.join();
+    
     
     // Serial communication loop here
     

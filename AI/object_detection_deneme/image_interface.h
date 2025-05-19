@@ -16,7 +16,7 @@ public:
     inline static constexpr int        COOLDOWN_SECONDS     = 5;     // cooldown between captures
     inline static constexpr std::size_t QUEUE_SIZE          = 60;    // ring-buffer length
     inline static constexpr double     LUMIN_TOL_PERCENT    = 50;  
-    inline static constexpr double     DIFFER_LUMIN_TOL_REFERENCE = 60;
+    inline static constexpr double     DIFFER_LUMIN_TOL_REFERENCE = 80;
 	inline static constexpr double 	   THRESHOLD_DIFFERENCE = 10;
 	inline static constexpr int STARTUP_DELAY_SECONDS = 3;   // Seko başlangıç delay
 
