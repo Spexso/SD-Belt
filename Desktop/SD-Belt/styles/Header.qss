@@ -2,8 +2,6 @@ QFrame#Header {
 
     background-color: #213045;
     border-radius: 6px;
-    min-width: 12px;
-    min-height: 12px;
 }
 
 QWidget#LNContainer{

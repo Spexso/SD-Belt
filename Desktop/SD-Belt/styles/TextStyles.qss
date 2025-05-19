@@ -1,7 +1,6 @@
 QLabel#Name {
     background-color: transparent;
     color: White;
-    font-size: 16px;
     font-family: "Segoe UI", sans-serif;
     font-weight: bold;
 }
