@@ -13,6 +13,7 @@
 #include <QNetworkReply>
 
 
+
 #define ProjectName "SD-Belt"
 #define ServerAddr "http://10.1.249.58"
 int lastDialValue = 180;
@@ -24,6 +25,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     NetworkManager = new QNetworkAccessManager(this);
+
+    // Logs
+    logs = new Logs(NetworkManager, ui->MainLogs, this);
 
     // qDebug() << "Current working dir:" << QDir::currentPath();
 
@@ -122,7 +126,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::SetupLogs()
 {
-    QLinearGradient gradient(0, 0, 200, 0); // horizontal gradient
+   /* QLinearGradient gradient(0, 0, 200, 0); // horizontal gradient
     gradient.setColorAt(1.0, QColor(255, 0, 0, 0));    // Fully transparent red
     gradient.setColorAt(0.0, QColor(255, 0, 0, 255));  // Fully opaque red
 
@@ -143,7 +147,7 @@ void MainWindow::SetupLogs()
         item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
         item->setBackground(transparentBrush);
         ui->MainLogs->addItem(item);
-    }
+    }*/
 }
 
 void MainWindow::SetupHeader()
@@ -375,6 +379,7 @@ void MainWindow::OnLogsButtonClicked()
 {
     // Switch Page/Tab Logic
     setActiveButton(ui->LogsButton);
+    logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
 }
 
 void MainWindow::OnReverseTheFlowClicked()

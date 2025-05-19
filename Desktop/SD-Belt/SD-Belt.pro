@@ -11,12 +11,14 @@ CONFIG += c++17
 
 SOURCES += \
     CameraReceiver.cpp \
+    Logs.cpp \
     StyleLoader.cpp \
     main.cpp \
     mainwindow.cpp
 
 HEADERS += \
     CameraReceiver.h \
+    Logs.h \
     StyleLoader.h \
     mainwindow.h
 

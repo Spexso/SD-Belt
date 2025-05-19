@@ -5,6 +5,9 @@
 #include <QFile>
 #include "qnetworkaccessmanager.h"
 #include <QPushButton>
+// Logs
+#include "Logs.h"
+
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -35,6 +38,9 @@ private:
     Ui::MainWindow *ui;
     QNetworkAccessManager *NetworkManager;
     QVector<QFile*> ResourceStyles;
+
+    Logs *logs;
+
 
     void SetupDebug();
 private slots:
