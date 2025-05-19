@@ -21,6 +21,7 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
+
 protected:
 
     // Style
@@ -35,10 +36,13 @@ private:
     QNetworkAccessManager *NetworkManager;
     QVector<QFile*> ResourceStyles;
 
+    void SetupDebug();
 private slots:
 
     void updateCameraView();
-
+    void OnAngleTextEditChanged();
+    bool eventFilter(QObject* obj, QEvent* event);
+    void SetupLogs();
     void setActiveButton(QPushButton *active);
     void OnSpeedAdjusted();
     void OnSpeedChanged(int value);
@@ -46,6 +50,7 @@ private slots:
     void OnDashboardButtonClicked();
     void OnCamerasButtonClicked();
     void OnLogsButtonClicked();
+    void OnDebugButtonClicked();
 
     void OnReverseTheFlowClicked();
     void OnEmergencyStopClicked();

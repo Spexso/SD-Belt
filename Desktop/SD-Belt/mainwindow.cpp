@@ -15,6 +15,7 @@
 
 #define ProjectName "SD-Belt"
 #define ServerAddr "http://10.1.249.58"
+int lastDialValue = 180;
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -66,6 +67,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     SetupHeader();
     SetupLogoOverlay();
+    SetupLogs();
+    SetupDebug();
     loadGlobalStyles();
 
     QFile menuStyle(":/styles/MenuButton.qss");
@@ -76,6 +79,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->DashboardButton->setStyleSheet(style);
         ui->CamerasButton->setStyleSheet(style);
         ui->LogsButton->setStyleSheet(style);
+        ui->DebugButton->setStyleSheet(style);
     }
 
     // Button Setup
@@ -85,21 +89,9 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->ReverseButton, &QPushButton::clicked, this, &MainWindow::OnReverseTheFlowClicked);
     connect(ui->NotifyButton, &QPushButton::clicked, this, &MainWindow::OnNotifyAdminClicked);
     connect(ui->EmergencyStopButton, &QPushButton::clicked, this, &MainWindow::OnEmergencyStopClicked);
+    connect(ui->DebugButton, &QPushButton::clicked, this, &MainWindow::OnDebugButtonClicked);
 
-    QLinearGradient gradient(0, 0, 100, 0); // horizontal gradient
-    gradient.setColorAt(0.0, QColor(255, 0, 0, 0));    // Fully transparent red
-    gradient.setColorAt(1.0, QColor(255, 0, 0, 255));  // Fully opaque red
-
-    QBrush transparentBrush(gradient);
-    // Populating Log, dummy
-    for(int i = 0; i < 20; i++)
-    {
-        QListWidgetItem *item = new QListWidgetItem(ui->LogList);
-        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
-        item->setBackground(transparentBrush);
-        ui->LogList->addItem(item);
-    }
-
+    // Click Bind
     connect(ui->DashboardButton, &QPushButton::clicked, this, [=]() {
         ui->StackedWidget->setCurrentIndex(0); // Go to first page
     });
@@ -112,6 +104,11 @@ MainWindow::MainWindow(QWidget *parent)
         ui->StackedWidget->setCurrentIndex(2); // Go to third page
     });
 
+    connect(ui->DebugButton, &QPushButton::clicked, this, [=]() {
+        ui->StackedWidget->setCurrentIndex(3); // Go to fourth page
+    });
+
+
     connect(ui->SpeedAdjuster, &QSlider::sliderReleased, this, &MainWindow::OnSpeedAdjusted);
     connect(ui->SpeedAdjuster, &QSlider::valueChanged, this, &MainWindow::OnSpeedChanged);
 
@@ -121,6 +118,32 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::SetupLogs()
+{
+    QLinearGradient gradient(0, 0, 200, 0); // horizontal gradient
+    gradient.setColorAt(1.0, QColor(255, 0, 0, 0));    // Fully transparent red
+    gradient.setColorAt(0.0, QColor(255, 0, 0, 255));  // Fully opaque red
+
+    QBrush transparentBrush(gradient);
+    // Populating Dashboard Log, dummy
+    for(int i = 0; i < 20; i++)
+    {
+        QListWidgetItem *item = new QListWidgetItem(ui->LogList);
+        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
+        item->setBackground(transparentBrush);
+        ui->LogList->addItem(item);
+    }
+
+    // Populating Main Log, dummy
+    for(int i = 0; i < 80; i++)
+    {
+        QListWidgetItem *item = new QListWidgetItem(ui->MainLogs);
+        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
+        item->setBackground(transparentBrush);
+        ui->MainLogs->addItem(item);
+    }
 }
 
 void MainWindow::SetupHeader()
@@ -139,10 +162,68 @@ void MainWindow::SetupHeader()
 
 void MainWindow::setActiveButton(QPushButton *active)
 {
-    QList<QPushButton*> buttons = { ui->DashboardButton, ui->CamerasButton, ui->LogsButton };
+    QList<QPushButton*> buttons = { ui->DashboardButton, ui->CamerasButton, ui->LogsButton, ui->DebugButton };
     for (QPushButton *btn : buttons)
         btn->setStyleSheet(btn == active ? MenuButtonSelectedStyle : MenuButtonStyle);
 }
+
+void MainWindow::SetupDebug()
+{/*
+    connect(ui->ServoAngleText, &QTextEdit::textChanged,
+            this, &MainWindow::OnAngleTextEditChanged);*/
+    ui->ServoAngleText->installEventFilter(this);
+}
+
+bool MainWindow::eventFilter(QObject* obj, QEvent* event)
+{
+    if (obj == ui->ServoAngleText && event->type() == QEvent::KeyPress)
+    {
+        QKeyEvent* keyEvent = static_cast<QKeyEvent*>(event);
+
+        if (keyEvent->key() == Qt::Key_Return || keyEvent->key() == Qt::Key_Enter)
+        {
+            QString input = ui->ServoAngleText->toPlainText().trimmed();
+            bool ok = false;
+            int value = input.toInt(&ok);
+
+            if (ok && value >= 0 && value <= 360)
+            {
+                qDebug() << "Accepted angle:" << value;
+                lastDialValue = value;
+            }
+            else
+            {
+                qDebug() << "Invalid angle input:" << input;
+                // optionally show error or reset
+            }
+
+            return true; // stop propagation
+        }
+    }
+
+    return QMainWindow::eventFilter(obj, event); // default handling
+}
+
+
+void MainWindow::OnAngleTextEditChanged()
+{
+    QString input = ui->ServoAngleText->toPlainText().trimmed();
+
+    bool ok = false;
+    int value = input.toInt(&ok);
+
+    if (ok && value >= 0 && value <= 360)
+    {
+        qDebug() << "Valid angle:" << value;
+        // Proceed with applying the angle (e.g. to a motor)
+    }
+    else
+    {
+        // Optionally reject the change visually or ignore it
+        qDebug() << "Invalid input:" << input;
+    }
+}
+
 
 void MainWindow::SetupLogoOverlay()
 {
@@ -188,6 +269,11 @@ void MainWindow::OnDashboardButtonClicked()
     setActiveButton(ui->DashboardButton);
 }
 
+void MainWindow::OnDebugButtonClicked()
+{
+    // Switch Page/Tab Logic
+    setActiveButton(ui->DebugButton);
+}
 
 // ---- CAMERA SECTION ----
 void MainWindow::OnCamerasButtonClicked()
@@ -354,6 +440,7 @@ void MainWindow::OnSpeedChanged(int value)
     if(ui->SpeedAdjuster)
     {
         ui->SpeedPercent->setText(QString("% %1").arg(value));
+        OnSpeedAdjusted();
     }
 }
 

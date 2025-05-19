@@ -16,5 +16,6 @@
         <file>styles/img/Ellipse.png</file>
         <file>styles/MenuButton.qss</file>
         <file>styles/MenuButtonSelected.qss</file>
+        <file>styles/img/DebugLogo.png</file>
     </qresource>
 </RCC>
