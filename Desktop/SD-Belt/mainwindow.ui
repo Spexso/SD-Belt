@@ -549,7 +549,7 @@ QPushButton:pressed#DebugButton {
              <enum>QFrame::Shape::StyledPanel</enum>
             </property>
             <property name="currentIndex">
-             <number>1</number>
+             <number>0</number>
             </property>
             <widget class="QWidget" name="Dashboard">
              <property name="sizePolicy">
@@ -923,7 +923,7 @@ border-radius: 25px; </string>
                              <string notr="true">color: rgb(255, 255, 255);</string>
                             </property>
                             <property name="text">
-                             <string>10,256</string>
+                             <string>0</string>
                             </property>
                            </widget>
                           </item>
@@ -990,7 +990,7 @@ border-radius: 25px; </string>
                              <string notr="true">color: rgb(255, 255, 255);</string>
                             </property>
                             <property name="text">
-                             <string>12</string>
+                             <string>0</string>
                             </property>
                            </widget>
                           </item>
@@ -1624,7 +1624,7 @@ font: 16pt &quot;Segoe UI&quot;;</string>
      <x>0</x>
      <y>0</y>
      <width>1920</width>
-     <height>26</height>
+     <height>17</height>
     </rect>
    </property>
    <property name="accessibleName">

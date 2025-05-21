@@ -6,6 +6,7 @@
 #include <QPixmap>
 
 #include "StyleLoader.h"
+#include "Logs.h"
 
 // Network
 #include <QNetworkAccessManager>
@@ -28,6 +29,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     // Logs
     logs = new Logs(NetworkManager, ui->MainLogs, this);
+    logs->setCountLabel(ui->label_19);
+    logs->setSpeedLabel(ui->label_21);
+    logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
+
 
     // qDebug() << "Current working dir:" << QDir::currentPath();
 
@@ -379,7 +384,6 @@ void MainWindow::OnLogsButtonClicked()
 {
     // Switch Page/Tab Logic
     setActiveButton(ui->LogsButton);
-    logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
 }
 
 void MainWindow::OnReverseTheFlowClicked()
