@@ -33,6 +33,13 @@ protected:
     void SetupSystemStatusOverlay(QFile &HeaderStyle);
     void SetupDashboardOverlay(QFile &HeaderStyle);
 
+protected:
+
+    // Dashboard stats & usages
+    void SetCPUUsage();
+    void SetRamUsage();
+    void SetCPUTemperature();
+
 private:
 
     Ui::MainWindow *ui;

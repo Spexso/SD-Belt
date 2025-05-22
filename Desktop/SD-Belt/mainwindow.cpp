@@ -272,6 +272,24 @@ void MainWindow::SetupDashboardOverlay(QFile& HeaderStyle)
     ui->SystemMessage->setStyleSheet(Style);
 }
 
+void MainWindow::SetCPUUsage()
+{
+    // if(ui->CPUUsageValue)
+    //     ui->CPUUsageValue->SetText();
+}
+
+void MainWindow::SetRamUsage()
+{
+    // if(ui->RamUsageValue)
+    //     ui->RamUsageValue->SetText();
+}
+
+void MainWindow::SetCPUTemperature()
+{
+    // if(ui->CPUTemperatureValue)
+    //     ui->CPUTemperatureValue->SetText();
+}
+
 void MainWindow::OnDashboardButtonClicked()
 {
     // Switch Page/Tab Logic

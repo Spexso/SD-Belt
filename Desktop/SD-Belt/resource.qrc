@@ -17,5 +17,8 @@
         <file>styles/MenuButton.qss</file>
         <file>styles/MenuButtonSelected.qss</file>
         <file>styles/img/DebugLogo.png</file>
+        <file>styles/img/cpu.png</file>
+        <file>styles/img/ram.png</file>
+        <file>styles/img/thermometer.png</file>
     </qresource>
 </RCC>
