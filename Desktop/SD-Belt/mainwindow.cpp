@@ -1,22 +1,19 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+
 #include <QFile>
 #include <QDebug>
 #include <QDir>
 #include <QPixmap>
-
-#include "StyleLoader.h"
-#include "Logs.h"
 
 // Network
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 
-
-
 #define ProjectName "SD-Belt"
 #define ServerAddr "http://10.1.249.58"
+
 int lastDialValue = 180;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -31,10 +28,10 @@ MainWindow::MainWindow(QWidget *parent)
     logs = new Logs(NetworkManager, ui->MainLogs, this);
     logs->setCountLabel(ui->label_19);
     logs->setSpeedLabel(ui->label_21);
-    logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
+    // logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
 
-
-    // qDebug() << "Current working dir:" << QDir::currentPath();
+    // System Info
+    SystemInfo = new SystemInfoRetriever(NetworkManager, ui->CpuTemperatureValue, ui->CPUUsageValue, ui->RamUsageValue, this);
 
     // Load QSS style file for verticalWidget
     QFile MainWindowStyle(":/styles/MainWindow.qss");
@@ -43,8 +40,24 @@ MainWindow::MainWindow(QWidget *parent)
     QFile CentralWindowStyle(":/styles/CentralWindow.qss");
     CentralWindowStyle.setObjectName("CentralWindowStyle");
 
+    QFile MenuButton(":/styles/MenuButton.qss");
+    MenuButton.setObjectName("MenuButton");
+
+    QFile MenuButtonSelected(":/styles/MenuButtonSelected.qss");
+    MenuButtonSelected.setObjectName("MenuButtonSelected");
+
+    QFile Header(":/styles/Header.qss");
+    Header.setObjectName("Header");
+
+    QFile TextStyle(":/styles/TextStyles.qss");
+    TextStyle.setObjectName("TextStyle");
+
     ResourceStyles.append(&MainWindowStyle);
     ResourceStyles.append(&CentralWindowStyle);
+    ResourceStyles.append(&MenuButton);
+    ResourceStyles.append(&MenuButtonSelected);
+    ResourceStyles.append(&Header);
+    ResourceStyles.append(&TextStyle);
 
     for (QFile* StyleFile : std::as_const(ResourceStyles))
     {
@@ -61,6 +74,29 @@ MainWindow::MainWindow(QWidget *parent)
             {
                 ui->centralwidget->setStyleSheet(style);
             }
+            else if(name == "MenuButton")
+            {
+                ui->DashboardButton->setStyleSheet(style);
+                ui->CamerasButton->setStyleSheet(style);
+                ui->LogsButton->setStyleSheet(style);
+                ui->DebugButton->setStyleSheet(style);
+                MenuButtonStyle = style;
+            }
+            else if(name == "MenuButtonSelected")
+            {
+                MenuButtonSelectedStyle = style;
+            }
+            else if(name == "Header")
+            {
+                SetupLogo();
+                ui->SystemIndicator->setStyleSheet(style);
+                ui->Header->setStyleSheet(style);
+            }
+            else if(name == "TextStyle")
+            {
+                ui->Name->setStyleSheet(style);
+                ui->Name->setText(ProjectName);
+            }
             else
             {
                 qDebug() << "Failed to match with any QSS File from resource:" << StyleFile->errorString();
@@ -74,22 +110,7 @@ MainWindow::MainWindow(QWidget *parent)
         }
     }
 
-    SetupHeader();
-    SetupLogoOverlay();
-    SetupLogs();
     SetupDebug();
-    loadGlobalStyles();
-
-    QFile menuStyle(":/styles/MenuButton.qss");
-    if (menuStyle.open(QFile::ReadOnly | QFile::Text))
-    {
-        QString style = menuStyle.readAll();
-
-        ui->DashboardButton->setStyleSheet(style);
-        ui->CamerasButton->setStyleSheet(style);
-        ui->LogsButton->setStyleSheet(style);
-        ui->DebugButton->setStyleSheet(style);
-    }
 
     // Button Setup
     connect(ui->DashboardButton, &QPushButton::clicked, this, &MainWindow::OnDashboardButtonClicked);
@@ -117,7 +138,6 @@ MainWindow::MainWindow(QWidget *parent)
         ui->StackedWidget->setCurrentIndex(3); // Go to fourth page
     });
 
-
     connect(ui->SpeedAdjuster, &QSlider::sliderReleased, this, &MainWindow::OnSpeedAdjusted);
     connect(ui->SpeedAdjuster, &QSlider::valueChanged, this, &MainWindow::OnSpeedChanged);
 
@@ -129,46 +149,6 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::SetupLogs()
-{
-   /* QLinearGradient gradient(0, 0, 200, 0); // horizontal gradient
-    gradient.setColorAt(1.0, QColor(255, 0, 0, 0));    // Fully transparent red
-    gradient.setColorAt(0.0, QColor(255, 0, 0, 255));  // Fully opaque red
-
-    QBrush transparentBrush(gradient);
-    // Populating Dashboard Log, dummy
-    for(int i = 0; i < 20; i++)
-    {
-        QListWidgetItem *item = new QListWidgetItem(ui->LogList);
-        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
-        item->setBackground(transparentBrush);
-        ui->LogList->addItem(item);
-    }
-
-    // Populating Main Log, dummy
-    for(int i = 0; i < 80; i++)
-    {
-        QListWidgetItem *item = new QListWidgetItem(ui->MainLogs);
-        item->setText("Raspberry pi cpu load exceed %93, overheat alert!");
-        item->setBackground(transparentBrush);
-        ui->MainLogs->addItem(item);
-    }*/
-}
-
-void MainWindow::SetupHeader()
-{
-    QFile HeaderStyle(":/styles/Header.qss");
-    if (HeaderStyle.open(QFile::ReadOnly | QFile::Text))
-    {
-        QString style = HeaderStyle.readAll();
-        SetupLogoOverlay();
-        SetupSystemStatusOverlay(HeaderStyle);
-        ui->Header->setStyleSheet(style);
-    }
-
-    HeaderStyle.close();
-}
-
 void MainWindow::setActiveButton(QPushButton *active)
 {
     QList<QPushButton*> buttons = { ui->DashboardButton, ui->CamerasButton, ui->LogsButton, ui->DebugButton };
@@ -177,9 +157,10 @@ void MainWindow::setActiveButton(QPushButton *active)
 }
 
 void MainWindow::SetupDebug()
-{/*
-    connect(ui->ServoAngleText, &QTextEdit::textChanged,
-            this, &MainWindow::OnAngleTextEditChanged);*/
+{
+    /*      connect(ui->ServoAngleText, &QTextEdit::textChanged,
+            this, &MainWindow::OnAngleTextEditChanged);
+    */
     ui->ServoAngleText->installEventFilter(this);
 }
 
@@ -234,7 +215,7 @@ void MainWindow::OnAngleTextEditChanged()
 }
 
 
-void MainWindow::SetupLogoOverlay()
+void MainWindow::SetupLogo()
 {
     // Setup Logo
     QPixmap LogoPix(":/styles/img/Logo.png");
@@ -243,51 +224,6 @@ void MainWindow::SetupLogoOverlay()
     int w = ui->Logo->width();
     int h = ui->Logo->height();
     ui->Logo->setPixmap(LogoPix.scaled(w, h, Qt::KeepAspectRatio));
-
-    // Setup Name
-    QFile TextStyle(":/styles/TextStyles.qss");
-    if (TextStyle.open(QFile::ReadOnly | QFile::Text))
-    {
-        QString Style = TextStyle.readAll();
-        ui->Name->setStyleSheet(Style);
-        ui->Name->setText(ProjectName);
-    }
-
-    TextStyle.close();
-}
-
-void MainWindow::SetupSystemStatusOverlay(QFile& HeaderStyle)
-{
-    // Setup System Status
-    QString Style = HeaderStyle.readAll();
-    ui->SystemIndicator->setStyleSheet(Style);
-    //ui->SystemMessage->setStyleSheet(Style);
-}
-
-void MainWindow::SetupDashboardOverlay(QFile& HeaderStyle)
-{
-    // Setup System Status
-    QString Style = HeaderStyle.readAll();
-    ui->SystemIndicator->setStyleSheet(Style);
-    ui->SystemMessage->setStyleSheet(Style);
-}
-
-void MainWindow::SetCPUUsage()
-{
-    // if(ui->CPUUsageValue)
-    //     ui->CPUUsageValue->SetText();
-}
-
-void MainWindow::SetRamUsage()
-{
-    // if(ui->RamUsageValue)
-    //     ui->RamUsageValue->SetText();
-}
-
-void MainWindow::SetCPUTemperature()
-{
-    // if(ui->CPUTemperatureValue)
-    //     ui->CPUTemperatureValue->SetText();
 }
 
 void MainWindow::OnDashboardButtonClicked()
@@ -302,100 +238,10 @@ void MainWindow::OnDebugButtonClicked()
     setActiveButton(ui->DebugButton);
 }
 
-// ---- CAMERA SECTION ----
+// CAMERA
 void MainWindow::OnCamerasButtonClicked()
 {
     setActiveButton(ui->CamerasButton);
-
-    // // Camera URL's
-    // cameraUrls = {
-    //     "ws://localhost:8765",
-    //     "ws://192.168.1.101:8765"
-    // };
-    // QLayout* layoutBase = ui->centralwidget->layout(); // Parent layout
-    // QVBoxLayout* layout = nullptr;
-
-    // if (!layoutBase)
-    // {
-    //     layout = new QVBoxLayout(ui->centralwidget);
-    //     ui->centralwidget->setLayout(layout);
-    // }
-    // else
-    // {
-    //     layout = qobject_cast<QVBoxLayout*>(layoutBase);
-    //     if (!layout)
-    //     {
-    //         delete layoutBase;
-    //         layout = new QVBoxLayout(ui->centralwidget);
-    //         ui->centralwidget->setLayout(layout);
-    //     }
-    // }
-
-    // // Clear existing layout content
-    // QLayoutItem* item;
-    // while ((item = layout->takeAt(0)) != nullptr)
-    // {
-    //     if (QWidget* w = item->widget())
-    //     {
-    //         w->deleteLater();
-    //     }
-    //     delete item;
-    // }
-
-    // // Create buttons and webcam widget
-    // prevButton = new QPushButton("◀", this);
-    // nextButton = new QPushButton("▶", this);
-    // webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
-
-    // connect(prevButton, &QPushButton::clicked, this, [=]() {
-    //     currentCameraIndex = (currentCameraIndex - 1 + cameraUrls.size()) % cameraUrls.size();
-    //     updateCameraView();
-    // });
-
-    // connect(nextButton, &QPushButton::clicked, this, [=]() {
-    //     currentCameraIndex = (currentCameraIndex + 1) % cameraUrls.size();
-    //     updateCameraView();
-    // });
-
-    // // Layout: Prev | cameraView | Next
-    // QHBoxLayout* centerRow = new QHBoxLayout();
-    // centerRow->setContentsMargins(0, 0, 0, 0);
-    // centerRow->setSpacing(0);
-    // centerRow->addWidget(prevButton);
-    // centerRow->addWidget(ui->cameraView);  // Keep as a container for WebcamWidget
-    // centerRow->addWidget(nextButton);
-
-    // // Center the entire row in the parent layout
-    // QWidget* centerContainer = new QWidget(this);
-    // centerContainer->setLayout(centerRow);
-
-    // layout->addStretch(1);
-    // layout->addWidget(centerContainer, 0, Qt::AlignCenter);
-    // layout->addStretch(1);
-
-    // // Set webcam inside cameraView
-    // QVBoxLayout* camLayout = new QVBoxLayout(ui->cameraView);
-    // camLayout->setContentsMargins(0, 0, 0, 0);
-    // camLayout->addWidget(webcam);
-
-}
-
-void MainWindow::updateCameraView()
-{
-    // if (!webcam || cameraUrls.isEmpty()) return;
-
-    // QWidget *rowContainer = webcam->parentWidget();
-    // QHBoxLayout *rowLayout = qobject_cast<QHBoxLayout*>(rowContainer->layout());
-    // if (!rowLayout) return;
-
-    // int index = rowLayout->indexOf(webcam);
-
-    // rowLayout->removeWidget(webcam);
-    // webcam->deleteLater();
-
-    // webcam = new WebcamWidget(cameraUrls[currentCameraIndex], this);
-
-    // rowLayout->insertWidget(index, webcam);
 }
 
 void MainWindow::OnLogsButtonClicked()
@@ -473,14 +319,5 @@ void MainWindow::OnSpeedChanged(int value)
 
 void MainWindow::OnNotifyAdminClicked()
 {
-    // Send a POST request
-    //QNetworkRequest postRequest(postUrl);
-    //postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
-
-    //QNetworkReply *postReply = NetworkManager->post(postRequest, "Hello from Qt client");
-    //connect(postReply, &QNetworkReply::finished, this, [=]() {
-    //    QString response = postReply->readAll();
-    //    qDebug() << "[POST /echo] Response:" << response;
-    //    postReply->deleteLater();
-    //});
+    // Notify Admin
 }

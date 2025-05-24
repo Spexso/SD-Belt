@@ -20,5 +20,6 @@
         <file>styles/img/cpu.png</file>
         <file>styles/img/ram.png</file>
         <file>styles/img/thermometer.png</file>
+        <file>styles/blinkit_logo_animation.riv</file>
     </qresource>
 </RCC>

@@ -159,7 +159,7 @@
                   </font>
                  </property>
                  <property name="text">
-                  <string>GroupName</string>
+                  <string>SD-BELT</string>
                  </property>
                  <property name="textFormat">
                   <enum>Qt::TextFormat::AutoText</enum>
@@ -247,7 +247,8 @@
                </font>
               </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 255, 255);</string>
               </property>
               <property name="text">
                <string>CPU Temperature</string>
@@ -255,15 +256,24 @@
              </widget>
             </item>
             <item>
-             <widget class="QLabel" name="TemperatureValue">
+             <widget class="QLabel" name="CpuTemperatureValue">
+              <property name="font">
+               <font>
+                <pointsize>14</pointsize>
+               </font>
+              </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 170, 0);</string>
               </property>
               <property name="text">
-               <string>Value</string>
+               <string>0</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
+              <property name="margin">
+               <number>5</number>
               </property>
              </widget>
             </item>
@@ -336,7 +346,8 @@
                </font>
               </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 255, 255);</string>
               </property>
               <property name="text">
                <string>Ram Usage</string>
@@ -345,14 +356,23 @@
             </item>
             <item>
              <widget class="QLabel" name="RamUsageValue">
+              <property name="font">
+               <font>
+                <pointsize>14</pointsize>
+               </font>
+              </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 170, 0);</string>
               </property>
               <property name="text">
-               <string>Value</string>
+               <string>0</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
+              <property name="margin">
+               <number>5</number>
               </property>
              </widget>
             </item>
@@ -425,7 +445,8 @@
                </font>
               </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 255, 255);</string>
               </property>
               <property name="text">
                <string>CPU Usage</string>
@@ -436,19 +457,24 @@
              <widget class="QLabel" name="CPUUsageValue">
               <property name="font">
                <font>
+                <pointsize>14</pointsize>
                 <underline>false</underline>
                 <strikeout>false</strikeout>
                 <stylestrategy>PreferDefault</stylestrategy>
                </font>
               </property>
               <property name="styleSheet">
-               <string notr="true">background-color: transparent;</string>
+               <string notr="true">background-color: transparent;
+color: rgb(255, 170, 0);</string>
               </property>
               <property name="text">
-               <string>Value</string>
+               <string>0</string>
               </property>
               <property name="alignment">
                <set>Qt::AlignmentFlag::AlignCenter</set>
+              </property>
+              <property name="margin">
+               <number>5</number>
               </property>
              </widget>
             </item>
@@ -601,7 +627,7 @@ border-radius: 25px; </string>
                 </size>
                </property>
                <property name="styleSheet">
-                <string notr="true">QPushButton#DashboardButton {
+                <string notr="true">QPushButton {
     background-color: transparent;
     color: black;
     border: none;
@@ -611,15 +637,16 @@ border-radius: 25px; </string>
     font-weight: 500;
 }
 
-QPushButton:hover#DashboardButton {
+QPushButton:hover {
     background-color: #2c3e50;  /* dark hover background */
     color: white;
 }
 
-QPushButton:pressed#DashboardButton {
+QPushButton:pressed {
     background-color: #1abc9c;  /* active click background */
     color: white;
-}</string>
+}
+</string>
                </property>
                <property name="text">
                 <string>Dashboard</string>
@@ -655,7 +682,7 @@ QPushButton:pressed#DashboardButton {
                 </size>
                </property>
                <property name="styleSheet">
-                <string notr="true">QPushButton#CamerasButton {
+                <string notr="true">QPushButton {
     background-color: transparent;
     color: black;
     border: none;
@@ -665,15 +692,16 @@ QPushButton:pressed#DashboardButton {
     font-weight: 500;
 }
 
-QPushButton:hover#CamerasButton {
+QPushButton:hover {
     background-color: #2c3e50;  /* dark hover background */
     color: white;
 }
 
-QPushButton:pressed#CamerasButton {
+QPushButton:pressed {
     background-color: #1abc9c;  /* active click background */
     color: white;
-}</string>
+}
+</string>
                </property>
                <property name="text">
                 <string>Cameras</string>
@@ -709,25 +737,26 @@ QPushButton:pressed#CamerasButton {
                 </size>
                </property>
                <property name="styleSheet">
-                <string notr="true">QPushButton#LogsButton {
+                <string notr="true">QPushButton {
     background-color: transparent;
     color: black;
     border: none;
     text-align: left;
-    padding: 10px 15px;
+    padding: 10px 15px 10px;
     font-size: 16px;
     font-weight: 500;
 }
 
-QPushButton:hover#LogsButton{
+QPushButton:hover {
     background-color: #2c3e50;  /* dark hover background */
     color: white;
 }
 
-QPushButton:pressed#LogsButton {
+QPushButton:pressed {
     background-color: #1abc9c;  /* active click background */
     color: white;
-}</string>
+}
+</string>
                </property>
                <property name="text">
                 <string>Logs</string>
@@ -751,25 +780,26 @@ QPushButton:pressed#LogsButton {
              <item>
               <widget class="QPushButton" name="DebugButton">
                <property name="styleSheet">
-                <string notr="true">QPushButton#DebugButton {
+                <string notr="true">QPushButton {
     background-color: transparent;
     color: black;
     border: none;
     text-align: left;
-    padding: 10px 15px;
+    padding: 10px 15px 10px;
     font-size: 16px;
     font-weight: 500;
 }
 
-QPushButton:hover#DebugButton {
+QPushButton:hover {
     background-color: #2c3e50;  /* dark hover background */
     color: white;
 }
 
-QPushButton:pressed#DebugButton {
+QPushButton:pressed {
     background-color: #1abc9c;  /* active click background */
     color: white;
-}</string>
+}
+</string>
                </property>
                <property name="text">
                 <string>Debug</string>

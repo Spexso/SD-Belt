@@ -12,12 +12,12 @@ Logs::Logs(QNetworkAccessManager *manager, QListWidget *target, QObject *parent)
     connect(timer, &QTimer::timeout, this, [this]() {
         this->fetch(currentToken);
     });
-    timer->start(10000);
+    timer->start(2000);
 }
 
 void Logs::fetch(const QString &token)
 {
-    QUrl url(BaseUrl "/scans");
+    QUrl url(BaseUrl AccessLogsUrl);
 
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QString("Bearer %1").arg(token).toUtf8());

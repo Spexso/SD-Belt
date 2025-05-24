@@ -8,6 +8,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 
+#define AccessLogsUrl "/scans"
 #define BaseUrl "https://sdbelt.devodev.online/api/v1"
 
 class Logs : public QObject

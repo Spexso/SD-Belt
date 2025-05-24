@@ -5,8 +5,8 @@
 #include <QFile>
 #include "qnetworkaccessmanager.h"
 #include <QPushButton>
-// Logs
 #include "Logs.h"
+#include "SystemInfoRetriever.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -24,49 +24,53 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-
 protected:
 
     // Style
-    void SetupHeader();
-    void SetupLogoOverlay();
-    void SetupSystemStatusOverlay(QFile &HeaderStyle);
-    void SetupDashboardOverlay(QFile &HeaderStyle);
+    void SetupLogo();
 
-protected:
-
-    // Dashboard stats & usages
-    void SetCPUUsage();
-    void SetRamUsage();
-    void SetCPUTemperature();
-
-private:
-
-    Ui::MainWindow *ui;
-    QNetworkAccessManager *NetworkManager;
-    QVector<QFile*> ResourceStyles;
-
-    Logs *logs;
-
-
-    void SetupDebug();
-private slots:
-
-    void updateCameraView();
-    void OnAngleTextEditChanged();
-    bool eventFilter(QObject* obj, QEvent* event);
-    void SetupLogs();
+    /* Common */
     void setActiveButton(QPushButton *active);
-    void OnSpeedAdjusted();
-    void OnSpeedChanged(int value);
+    bool eventFilter(QObject* obj, QEvent* event);
 
+    /* Debug */
+    void SetupDebug();
+    void OnAngleTextEditChanged();
+
+    /* Cameras */
+    void updateCameraView();
+
+    /* Logs */
+    void SetupLogs();
+
+    /* Tab Widget */
     void OnDashboardButtonClicked();
     void OnCamerasButtonClicked();
     void OnLogsButtonClicked();
     void OnDebugButtonClicked();
 
+    /* Dashboard */
     void OnReverseTheFlowClicked();
     void OnEmergencyStopClicked();
     void OnNotifyAdminClicked();
+    void OnSpeedAdjusted();
+    void OnSpeedChanged(int value);
+
+private:
+
+    QVector<QFile*> ResourceStyles;
+
+private:
+
+    QString MenuButtonSelectedStyle;
+    QString MenuButtonStyle;
+    Ui::MainWindow *ui;
+
+private:
+
+    QNetworkAccessManager *NetworkManager;
+    SystemInfoRetriever *SystemInfo;
+    Logs *logs;
+
 };
 #endif // MAINWINDOW_H
