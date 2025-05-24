@@ -1,7 +1,5 @@
 
 
-#include "scan_request_dto.h"
-#include "http_client.h"
 #include "async_inference.hpp"
 #include "utils.hpp"
 #include <thread>
@@ -18,7 +16,6 @@
 #include <iomanip>  
 #include <utility> 
 
-#include <vector>
 #include "image_interface.h"
 #include "udp_sender.hpp"
 #include "Object_info.hpp"
@@ -230,17 +227,6 @@ hailo_status run_post_process(
         init_video_writer("./processed_video.mp4", video, fps, org_width, org_height);
     }
     int i = 0;
-    
-    /* Htpp Client */
-        HttpClient client;
-    if (!client.initialize()) {
-        std::cerr << "Failed to initialize HTTP client" << std::endl;
-    }
-     std::string host = "192.168.150.249";  // Change to your server's hostname or IP
-    int port = 6060;                 // Change to your server's port
-    std::string path = "/api/v1/scans"; // Change to your API endpoint path
-    std::vector<ScanRequestDTO> scans;
-    
     while (all_cameras_done != true) {
         
         show_progress(input_type, i, frame_count);
@@ -271,10 +257,6 @@ hailo_status run_post_process(
 				float confidence = bbox.bbox.score * 100.f;
 
 				if (confidence > max) { max = confidence; max_class_name = class_name; }
-				
-				// Initialize DTO
-				
-				scans.push_back(ScanRequestDTO(class_name, confidence, bbox.bbox.y_max,bbox.bbox.x_max));
 
 				std::cout << j + 1 << ". Class: " << class_name
 						  << " (ID: " << bbox.class_id << ")"
@@ -286,20 +268,6 @@ hailo_status run_post_process(
 			std::cout << "Top-confidence: " << max_class_name << " (" 
 					  << std::fixed << std::setprecision(2) << max << "%)\n";
 		}
-		
-		
-		std::cout << "Sending " << scans.size() << " scans to server..." << std::endl;
-    
-		bool success = client.sendScans(host, port, path, scans);
-    
-		if (success) {
-			std::cout << "Scans successfully sent to server" << std::endl;
-		} else {
-			std::cerr << "Failed to send scans to server" << std::endl;
-		}
-		
-		scans.clear();
-
 
 		// ====== DEBUG CODE END ======
 
