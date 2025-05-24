@@ -12,7 +12,7 @@
 #include <QNetworkReply>
 
 #define ProjectName "SD-Belt"
-#define ServerAddr "http://10.1.249.58"
+#define ServerAddr "http://10.1.240.75"
 
 int lastDialValue = 180;
 
@@ -32,6 +32,15 @@ MainWindow::MainWindow(QWidget *parent)
 
     // System Info
     SystemInfo = new SystemInfoRetriever(NetworkManager, ui->CpuTemperatureValue, ui->CPUUsageValue, ui->RamUsageValue, this);
+
+    // TEST START
+    speedPostTimer = new QTimer(this);
+    speedPostTimer->setInterval(1000);
+    speedPostTimer->setSingleShot(true);
+
+    connect(speedPostTimer, &QTimer::timeout, this, [=]() {
+        speedLocked = false;
+    });
 
     // Load QSS style file for verticalWidget
     QFile MainWindowStyle(":/styles/MainWindow.qss");
@@ -293,6 +302,8 @@ void MainWindow::OnSpeedAdjusted()
         int value = ui->SpeedAdjuster->value();
         QString command = QString::number(value);
 
+        qDebug() << "[SpeedChange] Gönderiliyor:" << value;
+
         QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
         QNetworkRequest postRequest(postUrl);
         postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
@@ -310,11 +321,20 @@ void MainWindow::OnSpeedAdjusted()
 
 void MainWindow::OnSpeedChanged(int value)
 {
-    if(ui->SpeedAdjuster)
-    {
-        ui->SpeedPercent->setText(QString("% %1").arg(value));
-        OnSpeedAdjusted();
-    }
+    if (!ui->SpeedAdjuster)
+        return;
+
+    ui->SpeedPercent->setText(QString("% %1").arg(value));
+
+    // Eğer kilitliyse, gönderme
+    if (speedLocked)
+        return;
+
+    // Kilitle ve zamanlayıcıyı başlat
+    speedLocked = true;
+    speedPostTimer->start();
+
+    OnSpeedAdjusted(); // Asıl gönderimi burada yap
 }
 
 void MainWindow::OnNotifyAdminClicked()

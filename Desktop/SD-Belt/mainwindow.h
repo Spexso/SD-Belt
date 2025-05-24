@@ -72,5 +72,9 @@ private:
     SystemInfoRetriever *SystemInfo;
     Logs *logs;
 
+    QTimer *speedPostTimer;
+    bool speedLocked = false;
+
+
 };
 #endif // MAINWINDOW_H
