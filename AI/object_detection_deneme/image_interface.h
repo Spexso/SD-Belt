@@ -22,8 +22,8 @@ public:
 
     /* --- colour-tolerance parameters --------------------------------------- */
     // Per-channel (R,G,B) tolerance in percent, expressed as a Vec3d
-    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {10,10,10};
-    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {10,10,10};
+    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {15,15,15};
+    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {15,15,15};
     
 
 protected:

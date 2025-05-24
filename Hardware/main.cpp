@@ -14,13 +14,13 @@
 #include <atomic>
 #include <sstream>
 
-std::atomic<bool> running(true);
+std::atomic<bool> run_ard(true);
 
 // Signal handler
 void signalHandler(int signum)
 {
 	std::cout << "Interrupt signal (" << signum << ") received. Shutting down..." << std::endl;
-	running = false;
+	run_ard = false;
 }
 
 class HttpServerHandler
@@ -173,7 +173,7 @@ int main(int argc, char *argv[])
 	std::thread serverThread([&serverHandler]()
 							 { serverHandler.Start(); });
 
-	while (running)
+	while (run_ard)
 	{
 		std::this_thread::sleep_for(std::chrono::seconds(1));
 	}

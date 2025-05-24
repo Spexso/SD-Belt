@@ -1,4 +1,3 @@
-
 #include "http_client.h"
 #include <iostream>
 
@@ -56,10 +55,72 @@ SocketType HttpClient::connectToServer(const std::string& host, int port) {
             continue;
         }
 
-        if (connect(sock, addr->ai_addr, (int)addr->ai_addrlen) != SOCKET_ERROR_CODE) {
-            break; // Successfully connected
+        // Set socket to non-blocking mode
+        #ifdef _WIN32
+        u_long mode = 1;
+        if (ioctlsocket(sock, FIONBIO, &mode) != 0) {
+            CLOSE_SOCKET(sock);
+            sock = INVALID_SOCKET;
+            continue;
         }
+        #else
+        int flags = fcntl(sock, F_GETFL, 0);
+        if (flags == -1 || fcntl(sock, F_SETFL, flags | O_NONBLOCK) == -1) {
+            CLOSE_SOCKET(sock);
+            sock = INVALID_SOCKET;
+            continue;
+        }
+        #endif
 
+        // Attempt to connect
+        int connectResult = connect(sock, addr->ai_addr, (int)addr->ai_addrlen);
+        
+        #ifdef _WIN32
+        if (connectResult == SOCKET_ERROR) {
+            int error = WSAGetLastError();
+            if (error != WSAEWOULDBLOCK) {
+                CLOSE_SOCKET(sock);
+                sock = INVALID_SOCKET;
+                continue;
+            }
+        }
+        #else
+        if (connectResult == -1 && errno != EINPROGRESS) {
+            CLOSE_SOCKET(sock);
+            sock = INVALID_SOCKET;
+            continue;
+        }
+        #endif
+
+        // Wait for connection with timeout
+        fd_set writeSet;
+        FD_ZERO(&writeSet);
+        FD_SET(sock, &writeSet);
+        
+        struct timeval timeout;
+        timeout.tv_sec = 2;  // 2 second timeout
+        timeout.tv_usec = 0;
+        
+        int selectResult = select(sock + 1, nullptr, &writeSet, nullptr, &timeout);
+        
+        if (selectResult > 0 && FD_ISSET(sock, &writeSet)) {
+            // Check if connection was successful
+            int error = 0;
+            socklen_t errorLen = sizeof(error);
+            if (getsockopt(sock, SOL_SOCKET, SO_ERROR, (char*)&error, &errorLen) == 0 && error == 0) {
+                // Set socket back to blocking mode
+                #ifdef _WIN32
+                mode = 0;
+                ioctlsocket(sock, FIONBIO, &mode);
+                #else
+                flags = fcntl(sock, F_GETFL, 0);
+                fcntl(sock, F_SETFL, flags & ~O_NONBLOCK);
+                #endif
+                break; // Successfully connected
+            }
+        }
+        
+        // Connection failed or timed out
         CLOSE_SOCKET(sock);
         sock = INVALID_SOCKET;
     }
@@ -88,6 +149,20 @@ bool HttpClient::sendScans(const std::string& host, int port, const std::string&
         std::cerr << "Failed to connect to server" << std::endl;
         return false;
     }
+
+    // Set socket timeout for send and receive operations
+    struct timeval timeout;
+    timeout.tv_sec = 2;  // 2 second timeout
+    timeout.tv_usec = 0;
+    
+    #ifdef _WIN32
+    DWORD timeoutMs = 2000; // 2 seconds in milliseconds
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, (char*)&timeoutMs, sizeof(timeoutMs));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, (char*)&timeoutMs, sizeof(timeoutMs));
+    #else
+    setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    #endif
 
     // Prepare JSON payload
     std::string jsonPayload = scansToJsonArray(scans);
@@ -134,4 +209,34 @@ bool HttpClient::sendScans(const std::string& host, int port, const std::string&
     CLOSE_SOCKET(sock);
 
     return success;
+}
+
+
+bool HttpClient::sendSystemStatus(const std::string& host, int port, const std::string& path, 
+                                 const SystemStatusDTO& status) {
+    // Connect to the server
+    SocketType sock = connectToServer(host, port);
+    if (sock == INVALID_SOCKET) {
+        return false;
+    }
+
+    // Prepare JSON payload
+    std::string jsonPayload = status.toJson();
+    
+    // Prepare HTTP request
+    std::ostringstream request;
+    request << "POST " << path << " HTTP/1.1\r\n";
+    request << "Host: " << host << "\r\n";
+    request << "Content-Type: application/json\r\n";
+    request << "Content-Length: " << jsonPayload.length() << "\r\n";
+    request << "Connection: close\r\n";
+    request << "\r\n";
+    request << jsonPayload;
+
+    // Send request
+    std::string requestStr = request.str();
+    int bytesSent = send(sock, requestStr.c_str(), requestStr.length(), 0);
+    
+    CLOSE_SOCKET(sock);
+    return bytesSent != SOCKET_ERROR_CODE;
 }

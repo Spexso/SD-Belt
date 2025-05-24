@@ -26,12 +26,19 @@
 #include <cstring>
 #include <sstream>
 #include "scan_request_dto.h"
+#include "system_status_dto.h"
 
 
 class HttpClient {
 public:
     HttpClient();
     ~HttpClient();
+    
+    //SocketType connectToServer(const std::string& host, int port);
+
+	bool sendSystemStatus(const std::string& host, int port, const std::string& path, 
+                         const SystemStatusDTO& status);
+
 
     // Initialize socket library (required for Windows)
     bool initialize();

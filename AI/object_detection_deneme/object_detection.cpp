@@ -22,6 +22,7 @@
 #include "image_interface.h"
 #include "udp_sender.hpp"
 #include "Object_info.hpp"
+#include "system_status_dto.h"
 
 
 
@@ -115,7 +116,51 @@ MemInfo get_mem() {
 }
 
 
+void log_system_stats()
+{
+    // Initialize HTTP client
+    HttpClient client;
+    if (!client.initialize()) {
+        std::cerr << "Failed to initialize HTTP client for system stats" << std::endl;
+        return;
+    }
+    
+    // Server configuration 
+    std::string host = "172.20.10.5";
+    int port = 6060;
+    std::string path = "/api/v1/system/info";
 
+    while (keep_logging) {
+        /*  --- gather data --- */
+        double temp   = get_cpu_temp();
+        double cpuPct = get_cpu_usage();
+        MemInfo mem   = get_mem();
+
+        // Format memory usage as string
+        std::ostringstream memStream;
+        memStream << mem.free << "/" << mem.total << " MiB";
+        std::string memoryUsage = memStream.str();
+        
+        // Create SystemStatusDTO with current timestamp
+        SystemStatusDTO systemStatus(std::chrono::system_clock::now(), temp, cpuPct, memoryUsage);
+        
+        // Send system status to server
+        bool success = client.sendSystemStatus(host, port, path, systemStatus);
+        
+        if (success) {
+            std::cout << "System status sent: " << temp << "°C, " << cpuPct << "%, " 
+                      << memoryUsage << std::endl;
+        } else {
+            std::cerr << "Failed to send system status to server" << std::endl;
+        }
+
+        // Wait 5 seconds (same as original timing)
+        for (int i = 0; i < 50 && keep_logging; ++i)    
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+/*
 void log_system_stats()
 {
     std::ofstream log(LOG_FILE, std::ios::app);
@@ -125,7 +170,7 @@ void log_system_stats()
     }
 
     while (keep_logging) {
-        /*  --- gather data --- */
+        //  --- gather data --- 
         double temp   = get_cpu_temp();
         double cpuPct = get_cpu_usage();
         MemInfo mem   = get_mem();
@@ -142,6 +187,7 @@ void log_system_stats()
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
     }
 }
+*/
 
 std::pair<std::string,bool> parse_class_string(const std::string& full)
 {
@@ -181,7 +227,7 @@ void release_resources(cv::VideoCapture &capture, cv::VideoWriter &video, InputT
 // seko deneme 
 std::vector<std::string> class_names;
 
-
+/*
 // For defining 3 of the frames are HEALTHY OR ROTTEN (SEKO KOD)
 std::string decide_class_of_frames(std::vector<std::string>& Cnames){
     std::string result;
@@ -200,7 +246,7 @@ std::string decide_class_of_frames(std::vector<std::string>& Cnames){
         Cnames.pop_back();
     return result;    
 }
-
+*/
 
 /*
 // kapinin sağa ya da sola dönebilmesi icin prototip fonksiyon -- written by seko
@@ -213,6 +259,22 @@ void mekanik_kol(std::string::res){
     }
 }
 */
+std::vector<ScanRequestDTO> scans;
+
+void send_to_server(HttpClient& client, std::string& host,int& port, std::string& path){
+	bool success = client.sendScans(host, port, path, scans);
+    
+		if (success) {
+			std::cout << "Scans successfully sent to server" << std::endl;
+		} else {
+			std::cerr << "Failed to send scans to server" << std::endl;
+		}
+		
+		scans.clear();
+}
+ 
+
+
 
 hailo_status run_post_process(
     InputType &input_type,
@@ -236,23 +298,25 @@ hailo_status run_post_process(
     if (!client.initialize()) {
         std::cerr << "Failed to initialize HTTP client" << std::endl;
     }
-     std::string host = "192.168.150.249";  // Change to your server's hostname or IP
+     std::string host = "172.20.10.5";  // Change to your server's hostname or IP
     int port = 6060;                 // Change to your server's port
     std::string path = "/api/v1/scans"; // Change to your API endpoint path
-    std::vector<ScanRequestDTO> scans;
     
     while (all_cameras_done != true) {
-        
+        std::cout << "naber ziya" << std::endl;
         show_progress(input_type, i, frame_count);
+        std::cout << "xd" << std::endl;
         InferenceOutputItem output_item;
+        std::cout << "gelcen mi buraya" << std::endl;
         if (!results_queue->pop(output_item)) {
             continue;
         }
+        std::cout << "slm" << std::endl;
         auto& frame_to_draw = output_item.org_frame;
         auto bboxes = parse_nms_data(output_item.output_data_and_infos[0].first, class_count);
          
         
-
+		double max_x = 0.0 , max_y = 0.0;
          // ====== DEBUG CODE START ======
 		std::cout << "======== FRAME " << i << " DETECTIONS ========\n";
 	
@@ -270,11 +334,16 @@ hailo_status run_post_process(
 				std::string class_name = get_coco_name_from_int(static_cast<int>(bbox.class_id));
 				float confidence = bbox.bbox.score * 100.f;
 
-				if (confidence > max) { max = confidence; max_class_name = class_name; }
+				if (confidence > max) { 
+					max = confidence; 
+					max_class_name = class_name;
+					max_x = bbox.bbox.x_max;
+					max_y = bbox.bbox.y_max;
+				}
 				
 				// Initialize DTO
 				
-				scans.push_back(ScanRequestDTO(class_name, confidence, bbox.bbox.y_max,bbox.bbox.x_max));
+				// scans.push_back(ScanRequestDTO(class_name, confidence, bbox.bbox.y_max,bbox.bbox.x_max));
 
 				std::cout << j + 1 << ". Class: " << class_name
 						  << " (ID: " << bbox.class_id << ")"
@@ -282,14 +351,21 @@ hailo_status run_post_process(
 						  << " Position: [" << bbox.bbox.x_min << ", " << bbox.bbox.y_min << ", "
 						  << bbox.bbox.x_max << ", " << bbox.bbox.y_max << "]\n";
 			}
-			class_names.push_back(max_class_name);
+			
+			scans.push_back(ScanRequestDTO(max_class_name, max, max_y, max_x));
+			// class_names.push_back(max_class_name);
 			std::cout << "Top-confidence: " << max_class_name << " (" 
 					  << std::fixed << std::setprecision(2) << max << "%)\n";
+			
+			if(scans.size() == 3){
+					send_to_server(client, host, port, path);
+			}
 		}
 		
 		
 		std::cout << "Sending " << scans.size() << " scans to server..." << std::endl;
     
+		/*
 		bool success = client.sendScans(host, port, path, scans);
     
 		if (success) {
@@ -299,7 +375,7 @@ hailo_status run_post_process(
 		}
 		
 		scans.clear();
-
+		*/
 
 		// ====== DEBUG CODE END ======
 
@@ -328,13 +404,13 @@ hailo_status run_post_process(
        
        
        
-       
+		/*
         if(class_names.size() == ImageInterface::CAMERA_NUMBER){
-            std::string result = decide_class_of_frames(class_names);
+            //std::string result = decide_class_of_frames(class_names);
             std::cout << result << std::endl;
             // mekanik_kol(result); // FOR FINAL RESULT, THIS WILL CONTROL MEKANIK_KOL (PROTOTYPE)
         }
-        
+        */
         
         
         
@@ -708,7 +784,7 @@ inline bool isCenterBetweenPoints(const cv::Point2d& p1,
 
 
 
-
+int count = 500;
 
 void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
               uint32_t width, uint32_t height, UdpSender udp)
@@ -754,6 +830,8 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
             
+            std::string filePath;
+			
     
 
         cv::Point2d difference;
@@ -789,7 +867,7 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
 
 
             if(buf.camId == 0){
-                mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
+                mean_frame = whiteOutSameTone(frame, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
             else if(buf.camId == 1){
@@ -798,11 +876,21 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
             }
             
             else if(buf.camId == 2){
-                mean_frame = whiteOutSameTone(frame, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
+                mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
             
-            
+            /*
+            if(count < 1000){
+				filePath = std::string("preprocess_photo/") + "image" + std::to_string(count) + ".jpg";
+				cv::imwrite(filePath, mean_frame);
+				count++;
+			}
+			else{
+				std::cout << "FOTOGRAF CEKME BİTTİ" << std::endl;
+			}
+			* */
+			
             
             difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
             
@@ -847,8 +935,10 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         
     }
 
-    if (--active_cameras == 0)
+    if (--active_cameras == 0){
         all_cameras_done = true;
+		std::cout << "camera düştü" << std::endl;
+	}
 }
 
 
@@ -892,16 +982,16 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     buffer1.camId = 1;
     buffer2.camId = 2;
     
-	UdpSender udp0("10.1.252.249", 5000);  
+	UdpSender udp0("172.20.10.4", 5000);  
 	std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),
                target_width, target_height, std::cref(udp0));
     
     
-	UdpSender udp1("10.1.252.249", 5000);  
+	UdpSender udp1("172.20.10.4", 5000);  
     std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),
 				target_width, target_height, std::cref(udp1));    
     
-	UdpSender udp2("10.1.252.249", 5000);  
+	UdpSender udp2("172.20.10.4", 5000);  
     std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),
 				target_width, target_height, std::cref(udp2));    
     
@@ -927,7 +1017,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             if (system_ready.load() && buffer0.object_detection == true) { // seko system_ready.load() attı başlangıç delayı için
 				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer0.frame, target_width, target_height);
 				preprocessed_queue->push(preprocessed_frame_item);
-				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				std::cout << "Frame alındı ve queue'ya eklendi.0" << std::endl;
 				buffer0.object_detection = false;
             } 
             
@@ -940,7 +1030,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             if (system_ready.load() && buffer1.object_detection == true){ // seko system_ready.load() attı başlangıç delayı için
 				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer1.frame, target_width, target_height);
 				preprocessed_queue->push(preprocessed_frame_item);
-				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				std::cout << "Frame alındı ve queue'ya eklendi.1" << std::endl;
 				buffer1.object_detection = false;
             } 
             
@@ -954,7 +1044,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             if (system_ready.load() && buffer2.object_detection == true){ // seko system_ready.load() attı başlangıç delayı için
 				auto preprocessed_frame_item = create_preprocessed_frame_item(buffer2.frame, target_width, target_height);
 				preprocessed_queue->push(preprocessed_frame_item);
-				std::cout << "Frame alındı ve queue'ya eklendi." << std::endl;
+				std::cout << "Frame alındı ve queue'ya eklendi.2" << std::endl;
 				buffer2.object_detection = false;
             } 
             
