@@ -299,7 +299,7 @@ void MainWindow::OnSpeedAdjusted()
         int value = ui->SpeedAdjuster->value();
         QString command = QString::number(value);
 
-        qDebug() << "[SpeedChange] Gönderiliyor:" << value;
+        qDebug() << "[SpeedChange] Sending:" << value;
 
         QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
         QNetworkRequest postRequest(postUrl);
@@ -323,15 +323,15 @@ void MainWindow::OnSpeedChanged(int value)
 
     ui->SpeedPercent->setText(QString("% %1").arg(value));
 
-    // Eğer kilitliyse, gönderme
+    // Check if Speed change available
     if (speedLocked)
         return;
 
-    // Kilitle ve zamanlayıcıyı başlat
+    // Start the timer, lock
     speedLocked = true;
     speedPostTimer->start();
 
-    OnSpeedAdjusted(); // Asıl gönderimi burada yap
+    OnSpeedAdjusted(); // Change the speed
 }
 
 void MainWindow::OnNotifyAdminClicked()
