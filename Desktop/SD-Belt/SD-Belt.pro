@@ -18,6 +18,7 @@ SOURCES += \
 
 HEADERS += \
     CameraReceiver.h \
+    Globals.h \
     Logs.h \
     SystemInfoRetriever.h \
     mainwindow.h

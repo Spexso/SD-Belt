@@ -17,7 +17,7 @@ Logs::Logs(QNetworkAccessManager *manager, QListWidget *target, QObject *parent)
 
 void Logs::fetch(const QString &token)
 {
-    QUrl url(BaseUrl AccessLogsUrl);
+    QUrl url(BackendAddress AccessLogsUrl);
 
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QString("Bearer %1").arg(token).toUtf8());

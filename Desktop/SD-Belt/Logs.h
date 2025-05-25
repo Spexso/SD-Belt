@@ -1,15 +1,13 @@
 #ifndef LOGS_H
 #define LOGS_H
 
+#include "Globals.h"
 #include <QObject>
 #include <QLabel>
 #include <QListWidget>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
 #include <QTimer>
-
-#define AccessLogsUrl "/scans"
-#define BaseUrl "https://sdbelt.devodev.online/api/v1"
 
 class Logs : public QObject
 {

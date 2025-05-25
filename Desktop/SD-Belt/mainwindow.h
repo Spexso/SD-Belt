@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include "Logs.h"
 #include "SystemInfoRetriever.h"
+#include "Globals.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -74,7 +75,5 @@ private:
 
     QTimer *speedPostTimer;
     bool speedLocked = false;
-
-
 };
 #endif // MAINWINDOW_H

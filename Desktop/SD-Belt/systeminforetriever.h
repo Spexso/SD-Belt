@@ -6,10 +6,7 @@
 #include <QNetworkReply>
 #include <QTimer>
 #include <QLabel>
-
-#define PercentSign "%"
-#define BaseUrl "https://sdbelt.devodev.online/api/v1"
-#define AccessSystemInfoUrl "/system/info"
+#include "Globals.h"
 
 class SystemInfoRetriever : public QObject
 {
@@ -17,7 +14,7 @@ class SystemInfoRetriever : public QObject
 
 public:
 
-    explicit SystemInfoRetriever(QNetworkAccessManager *manager, QLabel* CpuTemperatureValue, QLabel* CpuUsageValue, QLabel* RamUsageValue, QObject *parent = nullptr);
+    explicit SystemInfoRetriever(QNetworkAccessManager *manager, QLabel* CpuTemperatureValue, QLabel* CpuUsageValue, QLabel* RamUsageValue, QLabel* SystemIndicatorLabel, QObject *parent = nullptr);
     void fetch(const QString &token);
 
     inline double GetCpuUtilization() { return CpuUtilization;}
@@ -50,6 +47,10 @@ private:
     QLabel* CpuTemperatureWidget;
     QLabel* CpuUsageWidget;
     QLabel* RamUsageWidget;
+    QLabel* SystemIndicatorWidget;
+
+    QPixmap SystemStatusGoodPix;
+    QPixmap SystemStatusBadPix;
 
     double CpuUtilization;
     double RamUtilization;

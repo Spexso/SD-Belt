@@ -5,6 +5,7 @@
 #include <QtCore>
 #include <QtNetwork>
 #include <QtWidgets>
+#include "Globals.h"
 
 class Receiver : public QWidget
 {

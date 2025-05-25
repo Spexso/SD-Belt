@@ -20,5 +20,7 @@
         <file>styles/img/cpu.png</file>
         <file>styles/img/ram.png</file>
         <file>styles/img/thermometer.png</file>
+        <file>styles/img/bad.png</file>
+        <file>styles/img/good.png</file>
     </qresource>
 </RCC>

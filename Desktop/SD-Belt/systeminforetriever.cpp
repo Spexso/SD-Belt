@@ -3,9 +3,12 @@
 #include <QJsonArray>
 #include <QJsonObject>
 
-SystemInfoRetriever::SystemInfoRetriever(QNetworkAccessManager *manager, QLabel* CpuTemperatureValue, QLabel* CpuUsageValue, QLabel* RamUsageValue, QObject *parent)
-    : QObject{parent}, network(manager), CpuTemperatureWidget(CpuTemperatureValue), CpuUsageWidget(CpuUsageValue), RamUsageWidget(RamUsageValue)
+SystemInfoRetriever::SystemInfoRetriever(QNetworkAccessManager *manager, QLabel* CpuTemperatureValue, QLabel* CpuUsageValue, QLabel* RamUsageValue, QLabel* SystemIndicatorLabel, QObject *parent)
+    : QObject{parent}, network(manager), CpuTemperatureWidget(CpuTemperatureValue), CpuUsageWidget(CpuUsageValue), RamUsageWidget(RamUsageValue), SystemIndicatorWidget(SystemIndicatorLabel)
 {
+    SystemStatusGoodPix.load(":/styles/img/good.png");
+    SystemStatusBadPix.load(":/styles/img/bad.png");
+
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this]() {
         this->fetch(currentToken);
@@ -15,7 +18,7 @@ SystemInfoRetriever::SystemInfoRetriever(QNetworkAccessManager *manager, QLabel*
 
 void SystemInfoRetriever::fetch(const QString &token)
 {
-    QUrl url(BaseUrl AccessSystemInfoUrl);
+    QUrl url(BackendAddress AccessSystemInfoUrl);
 
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QString("Bearer %1").arg(token).toUtf8());
@@ -37,17 +40,15 @@ void SystemInfoRetriever::OnSystemInfoReceived()
 
     QJsonObject SystemInfo = root["result"].toObject();
 
-    for (const QJsonValue &entry : SystemInfo)
-    {
-        QJsonObject Obj = entry.toObject();
-        this->SetCpuUtilization(Obj["cpuUsage"].toDouble());
-        this->SetRamUtilization(Obj["memoryUsage"].toDouble());
-        this->SetCpuTemperature(Obj["cpuTemperature"].toDouble());
-    }
+    this->SetCpuUtilization(SystemInfo["cpuUsage"].toDouble());
+    this->SetRamUtilization(SystemInfo["memoryUsage"].toDouble());
+    this->SetCpuTemperature(SystemInfo["cpuTemperature"].toDouble());
+    this->SetIsSytemOnline(SystemInfo["status"].toString() != "INACTIVE");
 
     SetOverlayCpuTemperature();
     SetOverlayCpuUtilization();
     SetOverlayRamUtilization();
+    SetOverlayIsSystemOnline();
 }
 
 void SystemInfoRetriever::SetCpuUtilization(double NewCpuUtilization)
@@ -70,13 +71,11 @@ void SystemInfoRetriever::SetIsSytemOnline(bool NewIsSystemOnline)
     this->IsSystemOnline = NewIsSystemOnline;
 }
 
-
-
 void SystemInfoRetriever::SetOverlayCpuUtilization()
 {
     if(CpuUsageWidget)
     {
-        QString PercentText = PercentSign % QString::number(this->GetCpuUtilization());
+        QString PercentText = PercentSign % QString::number(this->GetCpuUtilization(), 'f', 1);
         CpuUsageWidget->setText(PercentText);
     }
 }
@@ -85,7 +84,7 @@ void SystemInfoRetriever::SetOverlayRamUtilization()
 {
     if(RamUsageWidget)
     {
-        QString PercentText = PercentSign % QString::number(this->GetRamUtilization());
+        QString PercentText = PercentSign % QString::number(this->GetRamUtilization(), 'f', 1);
         RamUsageWidget->setText(PercentText);
     }
 }
@@ -94,14 +93,20 @@ void SystemInfoRetriever::SetOverlayCpuTemperature()
 {
     if(CpuTemperatureWidget)
     {
-        QString PercentText = PercentSign % QString::number(this->GetCpuTemperature());
+        QString PercentText = QString::number(this->GetCpuTemperature(), 'f', 1) % CelciusSign;
         CpuTemperatureWidget->setText(PercentText);
     }
 }
 
 void SystemInfoRetriever::SetOverlayIsSystemOnline()
 {
-
+    if(SystemIndicatorWidget && !SystemStatusGoodPix.isNull() && !SystemStatusBadPix.isNull())
+    {
+        if(this->GetIsSystemOnline())
+            SystemIndicatorWidget->setPixmap(SystemStatusGoodPix);
+        else
+            SystemIndicatorWidget->setPixmap(SystemStatusBadPix);
+    }
 }
 
 

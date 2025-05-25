@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "Globals.h"
 
 #include <QFile>
 #include <QDebug>
@@ -10,9 +11,6 @@
 #include <QNetworkAccessManager>
 #include <QNetworkRequest>
 #include <QNetworkReply>
-
-#define ProjectName "SD-Belt"
-#define ServerAddr "http://10.1.240.75"
 
 int lastDialValue = 180;
 
@@ -31,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
     // logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
 
     // System Info
-    SystemInfo = new SystemInfoRetriever(NetworkManager, ui->CpuTemperatureValue, ui->CPUUsageValue, ui->RamUsageValue, this);
+    SystemInfo = new SystemInfoRetriever(NetworkManager, ui->CpuTemperatureValue, ui->CPUUsageValue, ui->RamUsageValue, ui->SystemIndicator, this);
 
     // TEST START
     speedPostTimer = new QTimer(this);
@@ -261,11 +259,11 @@ void MainWindow::OnLogsButtonClicked()
 
 void MainWindow::OnReverseTheFlowClicked()
 {
-    QUrl postUrl(QString("%1:8080/rev").arg(ServerAddr));
+    QUrl postUrl(QString("%1%2").arg(BackendAddress).arg(SystemReversePoint));
     QNetworkRequest postRequest(postUrl);
     postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-    // Send the REV command to reverse motor direction
+    // Send the Reverse command to motor
     QNetworkReply *postReply = NetworkManager->post(postRequest, "REV\n");
     connect(postReply, &QNetworkReply::finished, this, [=]() {
         QString response = postReply->readAll();
@@ -276,7 +274,7 @@ void MainWindow::OnReverseTheFlowClicked()
 
 void MainWindow::OnEmergencyStopClicked()
 {
-     QUrl postUrl(QString("%1:8080/stop").arg(ServerAddr));
+    QUrl postUrl(QString("%1%2").arg(BackendAddress).arg(SystemStopPoint));
      QNetworkRequest postRequest(postUrl);
      postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
@@ -299,9 +297,7 @@ void MainWindow::OnSpeedAdjusted()
         int value = ui->SpeedAdjuster->value();
         QString command = QString::number(value);
 
-        qDebug() << "[SpeedChange] Sending:" << value;
-
-        QUrl postUrl(QString("%1:8080/speed").arg(ServerAddr));
+        QUrl postUrl(QString("%1%2").arg(BackendAddress).arg(SystemSpeedPoint));
         QNetworkRequest postRequest(postUrl);
         postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 

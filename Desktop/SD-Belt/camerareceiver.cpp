@@ -1,9 +1,5 @@
 #include "CameraReceiver.h"
 
-#define WIDGET_H 240
-#define WIDGET_W 320
-#define CAM_COUNT 3
-
 Receiver::Receiver(QWidget* parent)
     : QWidget(parent)
 {
@@ -15,10 +11,17 @@ Receiver::Receiver(QWidget* parent)
 
     for (int i = 0; i < CAM_COUNT; ++i)
     {
-        labels_[i] = new QLabel("No Frame");
-        labels_[i]->setMinimumSize(WIDGET_W, WIDGET_H);
-        labels_[i]->setAlignment(Qt::AlignCenter);
-        layout_.addWidget(labels_[i], 0, i);
+        QLabel* NewEntry = new QLabel("No Frame");
+
+        if(NewEntry)
+        {
+            NewEntry->setStyleSheet("color: white;");
+
+            labels_[i] = NewEntry;
+            labels_[i]->setMinimumSize(WIDGET_W, WIDGET_H);
+            labels_[i]->setAlignment(Qt::AlignCenter);
+            layout_.addWidget(labels_[i], 0, i);
+        }
     }
 
     setLayout(&layout_);
