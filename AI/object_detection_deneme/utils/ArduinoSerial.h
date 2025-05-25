@@ -117,6 +117,13 @@ public:
 	std::string getLatestDistance();
 
 	/**
+	 * Reverse current direction of Arduino motor 
+	 *
+	 * @return Response from Arduino
+	 */
+	std::string reverseDirection();
+
+	/**
 	 * Set the servo angle to initial
 	 *
 	 * @return The response to Arduino

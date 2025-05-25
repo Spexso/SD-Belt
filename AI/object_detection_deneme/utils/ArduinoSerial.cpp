@@ -244,6 +244,14 @@ std::string ArduinoSerial::setDirection(int direction)
 	return sendCommand(command);
 }
 
+// Reverse the direction of the motor
+std::string ArduinoSerial::reverseDirection()
+{
+	std::string command = "REV";
+	
+	return sendCommand(command);
+}
+
 
 // Set the servo angle (0–180)
 std::string ArduinoSerial::setServoAngle(int angle)

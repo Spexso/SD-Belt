@@ -76,16 +76,24 @@ std::string HttpServerHandler::handleCommand(const std::string &cmd)
     try
     {
         if (cmd == "start")
+        {
             return arduino->start(5); // Example ramp rate
+        }
 
         if (cmd == "stop")
+        {
             return arduino->stopImmediate();
+        }
 
         if (cmd == "reverse")
-            return arduino->setDirection(-1);
+        {
+            return arduino->reverseDirection();
+        }
 
         if (cmd == "status")
+        {
             return arduino->getStatus();
+        }
 
         if (cmd.rfind("speed=", 0) == 0)
         {
@@ -100,10 +108,14 @@ std::string HttpServerHandler::handleCommand(const std::string &cmd)
         }
 
         if (cmd == "dir=1")
+        {
             return arduino->setDirection(1);
+        }
 
         if (cmd == "dir=-1")
+        {
             return arduino->setDirection(-1);
+        }
 
         return "ERR: Unknown command";
     }

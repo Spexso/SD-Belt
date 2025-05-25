@@ -212,6 +212,12 @@ void processCommand(String command)
       Serial.println(value);
     }
   }
+  else if(cmd == "REV")
+  {
+    currentDirection *= -1;
+    applyMotorControl();
+    Serial.println(currentDirection == 1 ? "OK:DIR:Forward" : "OK:DIR:Reverse");
+  }
   else
   {
     Serial.println("ERR:Unknown command");
