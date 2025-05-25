@@ -272,9 +272,6 @@ void MainWindow::OnReverseTheFlowClicked()
         qDebug() << "[POST /echo] Response:" << response;
         postReply->deleteLater();
     });
-
-    ui->SpeedPercent->setText(QString("% %1").arg(0));
-    ui->SpeedAdjuster->setValue(0);
 }
 
 void MainWindow::OnEmergencyStopClicked()
