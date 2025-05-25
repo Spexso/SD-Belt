@@ -78,14 +78,6 @@ void loop()
       Serial.print("DISTANCE:");
       Serial.print(distance);
       Serial.println(" cm");
-
-      // Optional: auto-stop if object is very close
-      // if (distance < 10) {
-      //   targetSpeed = 0;
-      //   currentSpeed = 0;
-      //   applyMotorControl();
-      //   Serial.println("AUTO-STOP: Object too close");
-      // }
     }
     lastDistanceTime = millis();
   }

@@ -144,20 +144,34 @@ std::string ArduinoSerial::sendCommand(const std::string &command)
 		return "Error writing to serial port: " + std::string(strerror(errno));
 	}
 
-	std::this_thread::sleep_for(std::chrono::milliseconds(100));
+	// Read loop until newline or timeout
+	std::string response;
+	char ch;
+	auto start = std::chrono::steady_clock::now();
 
-	char buffer[256];
-	memset(buffer, 0, sizeof(buffer));
-	ssize_t bytesRead = read(serialPort, buffer, sizeof(buffer) - 1);
-
-	if (bytesRead < 0)
+	while (std::chrono::steady_clock::now() - start < std::chrono::milliseconds(500))
 	{
-		return "Error reading from serial port: " + std::string(strerror(errno));
+		ssize_t result = read(serialPort, &ch, 1);
+		if (result > 0)
+		{
+			if (ch == '\n')
+			{
+				break;
+			}
+			response += ch;
+		}
+		else
+		{
+			std::this_thread::sleep_for(std::chrono::milliseconds(10));
+		}
 	}
 
-	std::string response(buffer);
-	std::cout << "Response: " << response << std::endl;
+	if (response.empty())
+	{
+		return "Error: No response or timeout";
+	}
 
+	std::cout << "Response: " << response << std::endl;
 	return response;
 }
 
