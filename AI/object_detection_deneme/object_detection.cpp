@@ -23,8 +23,12 @@
 #include "udp_sender.hpp"
 #include "Object_info.hpp"
 #include "system_status_dto.h"
+#include "system_messages_dto.h"
 #include "HttpServerHandler.hpp"
 
+
+
+pthread_barrier_t sync_barrier;
 
 
 
@@ -32,16 +36,35 @@ const std::string LOG_FILE = "../obj_det_stats.log";
 
 std::atomic_bool keep_logging{true};
 
+/////////// Constants ///////////
+constexpr size_t MAX_QUEUE_SIZE = ImageInterface::QUEUE_SIZE;
+/////////////////////////////////
+
+std::shared_ptr<BoundedTSQueue<PreprocessedFrameItem>> preprocessed_queue =
+    std::make_shared<BoundedTSQueue<PreprocessedFrameItem>>(MAX_QUEUE_SIZE);
+
+std::shared_ptr<BoundedTSQueue<InferenceOutputItem>>   results_queue =
+    std::make_shared<BoundedTSQueue<InferenceOutputItem>>(MAX_QUEUE_SIZE);
+    
+std::shared_ptr<BoundedTSQueue<SystemLogMessageDTO>>   system_message_queue =
+    std::make_shared<BoundedTSQueue<SystemLogMessageDTO>>(MAX_QUEUE_SIZE);
+
+
+
+std::atomic<bool> camera0_active{true};
+std::atomic<bool> camera1_active{true};
+std::atomic<bool> camera2_active{true};
+
 
 #define CAMERAS ImageInterface::CAMERA_NUMBER
 
 std::atomic_int active_cameras(CAMERAS); 
 
+double threshold(70);
+
 std::atomic_bool system_ready(false); // Seko delay için flag
 
-
 std::atomic_bool all_cameras_done(false);
-
 
 int count = ImageInterface::SAVE_NUMBER;
 
@@ -114,6 +137,47 @@ MemInfo get_mem() {
     return m;
 }
 
+void log_system_messages()
+{
+    // Initialize HTTP client
+    HttpClient client;
+    if (!client.initialize()) {
+        std::cerr << "Failed to initialize HTTP client for system stats" << std::endl;
+        return;
+    }
+    
+    // Server configuration 
+    std::string host = ImageInterface::SERVER_IP;
+    int port = ImageInterface::BACKEND_PORT;
+    std::string path = ImageInterface::BACKEND_SYSTEMMESSAGE_POINT;
+
+    while (keep_logging) 
+    {
+		SystemLogMessageDTO logMessage;
+        bool hasLog = system_message_queue->pop(logMessage);
+
+        if (!hasLog) 
+            continue;
+        
+        // Send system message to server
+        bool success = client.sendSystemMessage(host, port, path, logMessage);
+        
+        if (success) 
+        {
+           std::cout << "başarılı" << std::endl; 
+        }
+        else 
+        {
+            std::cerr << "Failed to send system status to server" << std::endl;
+        }
+
+        // Wait 5 seconds (same as original timing)
+        for (int i = 0; i < 50 && keep_logging; ++i)    
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+}
+
+
 
 void log_system_stats()
 {
@@ -126,10 +190,11 @@ void log_system_stats()
     
     // Server configuration 
     std::string host = ImageInterface::SERVER_IP;
-    int port = 6060;
-    std::string path = "/api/v1/system/info";
+    int port = ImageInterface::BACKEND_PORT;
+    std::string path = ImageInterface::BACKEND_SYSTEMINFO_POINT;
 
-    while (keep_logging) {
+    while (keep_logging) 
+    {
         /*  --- gather data --- */
         double temp   = get_cpu_temp();
         double cpuPct = get_cpu_usage();
@@ -201,15 +266,7 @@ std::pair<std::string,bool> parse_class_string(const std::string& full)
 
 
 
-/////////// Constants ///////////
-constexpr size_t MAX_QUEUE_SIZE = ImageInterface::QUEUE_SIZE;
-/////////////////////////////////
 
-std::shared_ptr<BoundedTSQueue<PreprocessedFrameItem>> preprocessed_queue =
-    std::make_shared<BoundedTSQueue<PreprocessedFrameItem>>(MAX_QUEUE_SIZE);
-
-std::shared_ptr<BoundedTSQueue<InferenceOutputItem>>   results_queue =
-    std::make_shared<BoundedTSQueue<InferenceOutputItem>>(MAX_QUEUE_SIZE);
 
 void release_resources(cv::VideoCapture &capture, cv::VideoWriter &video, InputType &input_type) {
     if (input_type.is_video) {
@@ -260,7 +317,33 @@ void mekanik_kol(std::string::res){
 */
 std::vector<ScanRequestDTO> scans;
 
-void send_to_server(HttpClient& client, std::string& host,int& port, std::string& path){
+bool isProductHealthy(const std::vector<ScanRequestDTO>& scans) {
+    double score = 0.0;
+    int numberOfScans = scans.size();
+    std::unordered_map<std::string, double> productConfidenceMap;
+
+    for (const auto& scan : scans) {
+        double confidence = scan.confidence();
+        std::string productResult = scan.productResult();
+
+        std::string productId, result;
+        std::istringstream iss(productResult);
+        std::getline(iss, productId, '_');
+        std::getline(iss, result);
+
+        bool isSuccess = (result == "Healthy");
+        double health = isSuccess ? confidence : 0.0;
+
+        score += health / numberOfScans;
+
+        // Sum health per product ID
+        productConfidenceMap[productId] += health;
+    }
+
+    return score >= threshold;
+}
+
+bool send_to_server(HttpClient& client, std::string& host,int& port, std::string& path){
 	bool success = client.sendScans(host, port, path, scans);
     
 		if (success) {
@@ -269,7 +352,7 @@ void send_to_server(HttpClient& client, std::string& host,int& port, std::string
 			std::cerr << "Failed to send scans to server" << std::endl;
 		}
 		
-		scans.clear();
+		return isProductHealthy(scans);
 }
  
 
@@ -282,6 +365,7 @@ hailo_status run_post_process(
     int org_width,
     size_t frame_count,
     cv::VideoCapture &capture,
+    ArduinoSerial &arduino,
     size_t class_count = 80,
     double fps = 30) 
     {
@@ -298,15 +382,15 @@ hailo_status run_post_process(
         std::cerr << "Failed to initialize HTTP client" << std::endl;
     }
      std::string host = ImageInterface::SERVER_IP;  // Change to your server's hostname or IP
-    int port = 6060;                 // Change to your server's port
-    std::string path = "/api/v1/scans"; // Change to your API endpoint path
+    int port = ImageInterface::BACKEND_PORT;
+    std::string path = ImageInterface::BACKEND_SCANS_POINT;
     
     while (all_cameras_done != true) {
         std::cout << "naber ziya" << std::endl;
         show_progress(input_type, i, frame_count);
-        std::cout << "xd" << std::endl;
+        //std::cout << "xd" << std::endl;
         InferenceOutputItem output_item;
-        std::cout << "gelcen mi buraya" << std::endl;
+        //std::cout << "gelcen mi buraya" << std::endl;
         if (!results_queue->pop(output_item)) {
             continue;
         }
@@ -314,6 +398,7 @@ hailo_status run_post_process(
         auto& frame_to_draw = output_item.org_frame;
         auto bboxes = parse_nms_data(output_item.output_data_and_infos[0].first, class_count);
          
+        bool should_door_open = false;
         
 		double max_x = 0.0 , max_y = 0.0;
          // ====== DEBUG CODE START ======
@@ -357,9 +442,17 @@ hailo_status run_post_process(
 					  << std::fixed << std::setprecision(2) << max << "%)\n";
 			
 			if(scans.size() == 3){
-					send_to_server(client, host, port, path);
+					should_door_open = send_to_server(client, host, port, path);
+					std::cout << "Should door open: " << should_door_open<< "\n";
+					if(should_door_open)
+						arduino.setServoAngle(45);
+					else
+						arduino.setServoAngle(135);
+					scans.clear();
 			}
 		}
+		
+		
 		
 		
 		std::cout << "Sending " << scans.size() << " scans to server..." << std::endl;
@@ -789,11 +882,30 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
               uint32_t width, uint32_t height, UdpSender udp)
 {
     cv::VideoCapture cap(camId, cv::CAP_V4L2);
+    
+    
     if (!cap.isOpened()) {
-        std::cerr << "Kamera " << camId << " açılmadı!\n";
-        run = false;
+        std::cerr << "Kamera " << buf.camId << " açılmadı!\n";
+        // run = false;
+        if (buf.camId == 0) camera0_active = false;
+		else if (buf.camId == 1) camera1_active = false;
+		else if (buf.camId == 2) camera2_active = false;
+		
+		--active_cameras;
+		
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Camera is not oppenned");
+		
+		system_message_queue->push(msg);
+		
+		
+		pthread_barrier_wait(&sync_barrier);
+		
+		
+		
         return;
     }
+    
+    
     cap.set(cv::CAP_PROP_FRAME_WIDTH,  width);
     cap.set(cv::CAP_PROP_FRAME_HEIGHT, height);
     cap.set(cv::CAP_PROP_FPS,          30);
@@ -818,14 +930,14 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
     cv::Mat mean_frame;
     
         // background frame whiteout
-            if(buf.camId == 0){
+            if(buf.camId == 0 && camera0_active == true){
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
-            else if(buf.camId == 1){
+            else if(buf.camId == 1 && camera1_active == true){
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
             
-            else if(buf.camId == 2){
+            else if(buf.camId == 2 && camera2_active == true){
                 mean_bg_frame = whiteOutSameTone(cropped_background, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
             }
             
@@ -865,17 +977,17 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         cv::Mat cropped = cropBetweenXs(frame, leftX, rightX);
 
 
-            if(buf.camId == 0){
-                mean_frame = whiteOutSameTone(frame, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
+            if(buf.camId == 0 && camera0_active == true){
+                mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
-            else if(buf.camId == 1){
+            else if(buf.camId == 1 && camera1_active == true){
                 mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
             
-            else if(buf.camId == 2){
-                mean_frame = whiteOutSameTone(cropped, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
+            else if(buf.camId == 2 && camera2_active == true){
+                mean_frame = whiteOutSameTone(frame, mean_rgb, ImageInterface::LUMIN_TOL_PERCENT, ImageInterface::COLOR_TOL_PERCENT_RGB);
                 // detection = framesDifferAboveTol(mean_frame, mean_bg_frame, 15);
             }
             
@@ -912,6 +1024,23 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
 
                     /* — buraya ESAS tetikleme işleminiz — */
                     buf.object_detection = true;          // kuyruğa itmek için bayrak
+                    
+                    /*
+                    
+                    if(count <= ImageInterface::SAVE_NUMBER + 500){
+					
+					std::cout << "Resim alindi " << std::endl;
+					
+                    filePath = std::string("photos/") + "image" + std::to_string(count) + ".jpg";
+					cv::imwrite(filePath, mean_frame);
+					count++;
+					
+					}
+					*/
+					
+					
+					
+					
                     // veya doğrudan:
                     // cv::imwrite("images/frame.jpg", cur);
                 }
@@ -935,11 +1064,17 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         }
         
     }
+    
+    
 
     if (--active_cameras == 0){
         all_cameras_done = true;
 		std::cout << "camera düştü" << std::endl;
 	}
+	
+	pthread_barrier_wait(&sync_barrier);
+	
+	return;
 }
 
 
@@ -983,33 +1118,110 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     buffer1.camId = 1;
     buffer2.camId = 2;
     
-	UdpSender udp0(ImageInterface::DESKTOP_IP_UDP, 5000);  
-	std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),
-               target_width, target_height, std::cref(udp0));
-    
-    
-	UdpSender udp1(ImageInterface::DESKTOP_IP_UDP, 5000);  
+	 
+	 pthread_barrier_init(&sync_barrier, nullptr, 3);
+	
+	std::thread t0;
+	std::thread t1;
+	std::thread t2;
+	
+	UdpSender udp0(ImageInterface::DESKTOP_IP_UDP,ImageInterface::UDP_COMMS_PORT); 
+	
+		try {
+			t0 = std::thread(grabLoop, 0,
+							 std::ref(buffer0),
+							 std::ref(running),
+							 target_width, target_height,
+							 std::cref(udp0));
+		}
+		catch (const std::system_error& e) {    // creation failed
+			std::cerr << "Could not start thread: " << e.what() << '\n';
+		}
+
+		if (!t0.joinable()) {                   // safety check
+			std::cerr << "Thread not running!\n";
+		}
+		
+		/*
+		 * not controlling the thread operation part
+	 std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),
+				target_width, target_height, std::cref(udp0));  
+		*/
+		
+	
+	
+	
+	UdpSender udp1(ImageInterface::DESKTOP_IP_UDP, ImageInterface::UDP_COMMS_PORT);
+	
+		try {
+			t1 = std::thread(grabLoop, 2,
+							 std::ref(buffer1),
+							 std::ref(running),
+							 target_width, target_height,
+							 std::cref(udp1));
+		}
+		catch (const std::system_error& e) {    // creation failed
+			std::cerr << "Could not start thread: " << e.what() << '\n';
+		}
+
+		if (!t1.joinable()) {                   // safety check
+			std::cerr << "Thread not running!\n";
+		}
+	
+	
+	
+	/*
     std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),
-				target_width, target_height, std::cref(udp1));    
+				target_width, target_height, std::cref(udp1));
+	* */
+				
+				
+				    
     
-	UdpSender udp2(ImageInterface::DESKTOP_IP_UDP, 5000);  
+	UdpSender udp2(ImageInterface::DESKTOP_IP_UDP, ImageInterface::UDP_COMMS_PORT);  
+	
+		try {
+			t2 = std::thread(grabLoop, 4,
+							 std::ref(buffer2),
+							 std::ref(running),
+							 target_width, target_height,
+							 std::cref(udp2));
+		}
+		catch (const std::system_error& e) {    // creation failed
+			std::cerr << "Could not start thread: " << e.what() << '\n';
+		}
+
+		if (!t2.joinable()) {                   // safety check
+			std::cerr << "Thread not running!\n";
+		}
+	
+	/* 
     std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),
-				target_width, target_height, std::cref(udp2));    
+				target_width, target_height, std::cref(udp2));  
+	*/
     
     
+    if(camera0_active == true){
+		cv::namedWindow("Cam0", cv::WINDOW_NORMAL);
+		cv::moveWindow("Cam0", 50, 50);
+	}
     
-    cv::namedWindow("Cam0", cv::WINDOW_NORMAL);
-    cv::namedWindow("Cam1", cv::WINDOW_NORMAL);
-    cv::namedWindow("Cam2", cv::WINDOW_NORMAL);
-    cv::moveWindow("Cam0", 50, 50);
-    cv::moveWindow("Cam1", 420, 50);
-    cv::moveWindow("Cam2", 640, 50);
+    if(camera1_active == true){
+		cv::namedWindow("Cam1", cv::WINDOW_NORMAL);
+		cv::moveWindow("Cam1", 420, 50);
+	}
     
+    if(camera2_active == true){
+		cv::namedWindow("Cam2", cv::WINDOW_NORMAL);
+		cv::moveWindow("Cam2", 640, 50);
+    }
     
     
     while (running) {
         
         char c = static_cast<char>(cv::waitKey(1));
+        
+        if(camera0_active == true)
         {
             std::lock_guard<std::mutex> lk(buffer0.m);
             if (!buffer0.frame.empty())
@@ -1023,6 +1235,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             } 
             
         }
+        if(camera1_active == true)
         {
             std::lock_guard<std::mutex> lk(buffer1.m);
             if (!buffer1.frame.empty())
@@ -1036,7 +1249,7 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
             } 
             
         }
-        
+        if(camera2_active == true)
         {
             std::lock_guard<std::mutex> lk(buffer2.m);
             if (!buffer2.frame.empty())
@@ -1060,6 +1273,8 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     t0.join();
     t1.join();
     t2.join();
+    
+    pthread_barrier_destroy(&sync_barrier);
     
     cv::destroyAllWindows();
     preprocessed_queue->stop(); // queue'yu durdur
@@ -1093,13 +1308,10 @@ hailo_status run_inference_async(AsyncModelInfer& model,
 
 int main(int argc, char** argv)
 {
-	
-	std::string serialPort = "/dev/ttyUSB0";
-	
-	ArduinoSerial arduino(serialPort);
+	ArduinoSerial arduino(ImageInterface::ARDUINO_PORT);
 	if (!arduino.isConnected())
 	{
-		std::cerr << "Failed to connect to Arduino on " << serialPort << std::endl;
+		std::cerr << "Failed to connect to Arduino on " << ImageInterface::ARDUINO_PORT << std::endl;
 		// return 1;
 	}
 	
@@ -1130,6 +1342,7 @@ int main(int argc, char** argv)
     InputType input_type;
     
      std::thread logger_thread(log_system_stats);
+     std::thread message_thread(log_system_messages);
 
     CommandLineArgs args = parse_command_line_arguments(argc, argv);
     AsyncModelInfer model(args.detection_hef, results_queue);
@@ -1154,6 +1367,7 @@ int main(int argc, char** argv)
                                 org_width,
                                 frame_count,
                                 std::ref(capture),
+                                std::ref(arduino),
                                 class_count,
                                 fps);
                                 
@@ -1173,6 +1387,8 @@ int main(int argc, char** argv)
     
     keep_logging = false;
     if (logger_thread.joinable()) logger_thread.join();
+    
+    if (message_thread.joinable()) message_thread.join();
     
     std::cout << "Stopping server...\n";
 	serverHandler.Stop();

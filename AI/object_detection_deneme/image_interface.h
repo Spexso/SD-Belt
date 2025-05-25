@@ -15,22 +15,28 @@ public:
     /* --- numeric parameters ------------------------------------------------ */
     
     
-    inline static const std::string DESKTOP_IP_UDP   {"172.20.10.2"};
-    inline static const std::string SERVER_IP   {"172.20.10.5"};
+    inline static const std::string DESKTOP_IP_UDP   {"10.1.228.103"};
+    inline static const std::string SERVER_IP   {"10.1.228.103"};
+    inline static const std::string ARDUINO_PORT {"/dev/ttyUSB0"};
+    inline static const std::string BACKEND_SCANS_POINT {"/api/v1/scans"};
+	inline static const std::string BACKEND_SYSTEMINFO_POINT = "/api/v1/system/info";
+	inline static const std::string BACKEND_SYSTEMMESSAGE_POINT = "/api/v1/system/logs";
+    inline static constexpr int  BACKEND_PORT = 6060;
+    inline static constexpr int UDP_COMMS_PORT = 5000;
     
     inline static constexpr int        SAVE_NUMBER          = 0;
     inline static constexpr int        CAMERA_NUMBER        = 3;     // active camera index
     inline static constexpr int        COOLDOWN_SECONDS     = 5;     // cooldown between captures
     inline static constexpr std::size_t QUEUE_SIZE          = 60;    // ring-buffer length
-    inline static constexpr double     LUMIN_TOL_PERCENT    = 50;  
-    inline static constexpr double     DIFFER_LUMIN_TOL_REFERENCE = 80;
-	inline static constexpr double 	   THRESHOLD_DIFFERENCE = 10;
+    inline static constexpr double     LUMIN_TOL_PERCENT    = 60;  
+    inline static constexpr double     DIFFER_LUMIN_TOL_REFERENCE = 60;
+	inline static constexpr double 	   THRESHOLD_DIFFERENCE = 7;
 	inline static constexpr int STARTUP_DELAY_SECONDS = 3;   // Seko başlangıç delay
 
     /* --- colour-tolerance parameters --------------------------------------- */
     // Per-channel (R,G,B) tolerance in percent, expressed as a Vec3d
-    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {10,10,10};
-    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {10,10,10};
+    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {15,15,15};
+    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {15,15,15};
     
 
 protected:

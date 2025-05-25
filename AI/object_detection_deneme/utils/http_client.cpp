@@ -240,3 +240,34 @@ bool HttpClient::sendSystemStatus(const std::string& host, int port, const std::
     CLOSE_SOCKET(sock);
     return bytesSent != SOCKET_ERROR_CODE;
 }
+
+
+bool HttpClient::sendSystemMessage(const std::string& host, int port, const std::string& path, 
+                                 const SystemLogMessageDTO& message) 
+{
+    // Connect to the server
+    SocketType sock = connectToServer(host, port);
+    if (sock == INVALID_SOCKET) {
+        return false;
+    }
+
+    // Prepare JSON payload
+    std::string jsonPayload = message.toJson();
+    
+    // Prepare HTTP request
+    std::ostringstream request;
+    request << "POST " << path << " HTTP/1.1\r\n";
+    request << "Host: " << host << "\r\n";
+    request << "Content-Type: application/json\r\n";
+    request << "Content-Length: " << jsonPayload.length() << "\r\n";
+    request << "Connection: close\r\n";
+    request << "\r\n";
+    request << jsonPayload;
+
+    // Send request
+    std::string requestStr = request.str();
+    int bytesSent = send(sock, requestStr.c_str(), requestStr.length(), 0);
+    
+    CLOSE_SOCKET(sock);
+    return bytesSent != SOCKET_ERROR_CODE;
+}

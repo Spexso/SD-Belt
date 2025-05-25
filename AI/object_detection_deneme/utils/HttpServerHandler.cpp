@@ -1,5 +1,8 @@
 #include "HttpServerHandler.hpp"
 
+
+extern double threshold;
+
 HttpServerHandler::HttpServerHandler(ArduinoSerial *arduinoPtr)
     : arduino(arduinoPtr) {}
 
@@ -46,6 +49,30 @@ void HttpServerHandler::Init()
         {
             std::string error = "ERR: Invalid speed value - " + std::string(e.what());
             std::cerr << "[/speed] " << error << std::endl;
+            res.set_content(error, "text/plain");
+            res.status = 400;
+        }
+    });
+    
+    
+    server.Post("/threshold", [this](const httplib::Request &req, httplib::Response &res)
+    {
+        std::string body = req.body;
+        std::cout << "[/threshold] Received body: " << body << std::endl;
+
+        try
+        {
+            double percent = std::stod(body);
+            threshold = percent;
+            std::string response = "Threshold changed";
+            std::cout << "[/threshold] Response: " << response << std::endl;
+            res.set_content(response, "text/plain");
+            std::cout << "New threshold value:" << threshold << std::endl;
+        }
+        catch (const std::exception &e)
+        {
+            std::string error = "ERR: Invalid threshold value - " + std::string(e.what());
+            std::cerr << "[/threshold] " << error << std::endl;
             res.set_content(error, "text/plain");
             res.status = 400;
         }

@@ -27,6 +27,7 @@
 #include <sstream>
 #include "scan_request_dto.h"
 #include "system_status_dto.h"
+#include "system_messages_dto.h"
 
 
 class HttpClient {
@@ -38,6 +39,9 @@ public:
 
 	bool sendSystemStatus(const std::string& host, int port, const std::string& path, 
                          const SystemStatusDTO& status);
+                         
+    bool sendSystemMessage(const std::string& host, int port, const std::string& path, 
+                         const SystemLogMessageDTO& message);
 
 
     // Initialize socket library (required for Windows)
