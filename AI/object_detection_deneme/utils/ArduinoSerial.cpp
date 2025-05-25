@@ -216,8 +216,20 @@ std::string ArduinoSerial::setDirection(int direction)
 	{
 		return "Error: Direction must be 1 (forward) or -1 (reverse)";
 	}
-	return sendCommand("DIR:" + std::to_string(direction));
+
+	std::string command = "DIR:" + std::to_string(direction);
+	std::string fullCommand = command + "\n";
+
+	std::cout << "Raw bytes being sent: ";
+	for (char c : fullCommand)
+	{
+		std::cout << "[" << static_cast<int>(c) << "]";
+	}
+	std::cout << std::endl;
+
+	return sendCommand(command);
 }
+
 
 // Set the servo angle (0–180)
 std::string ArduinoSerial::setServoAngle(int angle)

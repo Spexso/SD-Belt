@@ -116,6 +116,11 @@ void applyMotorControl()
     analogWrite(LPWM, 0);
     analogWrite(RPWM, currentSpeed);
   }
+  else if (currentDirection == -1)
+  {
+    analogWrite(LPWM, currentSpeed);
+    analogWrite(RPWM, 0);
+  }
   else
   {
     analogWrite(RPWM, 0);
@@ -136,6 +141,10 @@ void processCommand(String command)
   {
     cmd = command.substring(0, colonIndex);
     valueStr = command.substring(colonIndex + 1);
+    valueStr.trim();
+    Serial.print("→ valueStr before toInt: '");
+    Serial.print(valueStr);
+    Serial.println("'");
     value = valueStr.toInt();
   }
   else
