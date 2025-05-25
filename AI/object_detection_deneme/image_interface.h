@@ -3,6 +3,7 @@
 
 #include <opencv2/core.hpp>
 #include <cstddef>
+#include <string>
 
 /**
  * Pure-configuration interface that holds project-wide constants.
@@ -12,6 +13,12 @@ class ImageInterface
 {
 public:
     /* --- numeric parameters ------------------------------------------------ */
+    
+    
+    inline static const std::string DESKTOP_IP_UDP   {"172.20.10.2"};
+    inline static const std::string SERVER_IP   {"172.20.10.5"};
+    
+    inline static constexpr int        SAVE_NUMBER          = 0;
     inline static constexpr int        CAMERA_NUMBER        = 3;     // active camera index
     inline static constexpr int        COOLDOWN_SECONDS     = 5;     // cooldown between captures
     inline static constexpr std::size_t QUEUE_SIZE          = 60;    // ring-buffer length
@@ -22,8 +29,8 @@ public:
 
     /* --- colour-tolerance parameters --------------------------------------- */
     // Per-channel (R,G,B) tolerance in percent, expressed as a Vec3d
-    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {15,15,15};
-    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {15,15,15};
+    inline static const cv::Vec3d COLOR_TOL_PERCENT_RGB           {10,10,10};
+    inline static const cv::Vec3d DIFFER_COLOR_TOL_PERCENT_RGB    {10,10,10};
     
 
 protected:

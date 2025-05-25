@@ -23,6 +23,7 @@
 #include "udp_sender.hpp"
 #include "Object_info.hpp"
 #include "system_status_dto.h"
+#include "HttpServerHandler.hpp"
 
 
 
@@ -30,7 +31,6 @@
 const std::string LOG_FILE = "../obj_det_stats.log";
 
 std::atomic_bool keep_logging{true};
-
 
 
 #define CAMERAS ImageInterface::CAMERA_NUMBER
@@ -43,8 +43,7 @@ std::atomic_bool system_ready(false); // Seko delay için flag
 std::atomic_bool all_cameras_done(false);
 
 
-
-
+int count = ImageInterface::SAVE_NUMBER;
 
 
 
@@ -126,7 +125,7 @@ void log_system_stats()
     }
     
     // Server configuration 
-    std::string host = "172.20.10.5";
+    std::string host = ImageInterface::SERVER_IP;
     int port = 6060;
     std::string path = "/api/v1/system/info";
 
@@ -298,7 +297,7 @@ hailo_status run_post_process(
     if (!client.initialize()) {
         std::cerr << "Failed to initialize HTTP client" << std::endl;
     }
-     std::string host = "172.20.10.5";  // Change to your server's hostname or IP
+     std::string host = ImageInterface::SERVER_IP;  // Change to your server's hostname or IP
     int port = 6060;                 // Change to your server's port
     std::string path = "/api/v1/scans"; // Change to your API endpoint path
     
@@ -784,7 +783,7 @@ inline bool isCenterBetweenPoints(const cv::Point2d& p1,
 
 
 
-int count = 500;
+
 
 void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
               uint32_t width, uint32_t height, UdpSender udp)
@@ -881,7 +880,9 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
             }
             
             /*
-            if(count < 1000){
+            TO GATHER EMPHTY İMAGES
+            
+            if(count < ImageInterface::SAVE_NUMBER + 500){
 				filePath = std::string("preprocess_photo/") + "image" + std::to_string(count) + ".jpg";
 				cv::imwrite(filePath, mean_frame);
 				count++;
@@ -982,16 +983,16 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
     buffer1.camId = 1;
     buffer2.camId = 2;
     
-	UdpSender udp0("172.20.10.4", 5000);  
+	UdpSender udp0(ImageInterface::DESKTOP_IP_UDP, 5000);  
 	std::thread t0(grabLoop, 0, std::ref(buffer0), std::ref(running),
                target_width, target_height, std::cref(udp0));
     
     
-	UdpSender udp1("172.20.10.4", 5000);  
+	UdpSender udp1(ImageInterface::DESKTOP_IP_UDP, 5000);  
     std::thread t1(grabLoop, 2, std::ref(buffer1), std::ref(running),
 				target_width, target_height, std::cref(udp1));    
     
-	UdpSender udp2("172.20.10.4", 5000);  
+	UdpSender udp2(ImageInterface::DESKTOP_IP_UDP, 5000);  
     std::thread t2(grabLoop, 4, std::ref(buffer2), std::ref(running),
 				target_width, target_height, std::cref(udp2));    
     
@@ -1092,6 +1093,31 @@ hailo_status run_inference_async(AsyncModelInfer& model,
 
 int main(int argc, char** argv)
 {
+	
+	std::string serialPort = "/dev/ttyUSB0";
+	
+	ArduinoSerial arduino(serialPort);
+	if (!arduino.isConnected())
+	{
+		std::cerr << "Failed to connect to Arduino on " << serialPort << std::endl;
+		// return 1;
+	}
+	
+	HttpServerHandler serverHandler(&arduino);
+	serverHandler.Init();
+	
+	if (!serverHandler.Bind())
+	{
+		std::cerr << "Failed to bind server to port 8080\n";
+		return 1;
+	}
+	
+	
+	std::thread serverThread([&serverHandler]()
+							 { serverHandler.Start(); });
+	
+	
+	
     size_t class_count = 4; // 80 classes in COCO dataset
     double fps = 30;
     
@@ -1147,6 +1173,14 @@ int main(int argc, char** argv)
     
     keep_logging = false;
     if (logger_thread.joinable()) logger_thread.join();
+    
+    std::cout << "Stopping server...\n";
+	serverHandler.Stop();
+
+	if (serverThread.joinable())
+		serverThread.join();
+
+	std::cout << "System shut down gracefully." << std::endl;
     
     
     // Serial communication loop here
