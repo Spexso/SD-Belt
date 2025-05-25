@@ -20,6 +20,7 @@ Receiver::Receiver(QWidget* parent)
         labels_[i]->setAlignment(Qt::AlignCenter);
         layout_.addWidget(labels_[i], 0, i);
     }
+
     setLayout(&layout_);
     setWindowTitle("UDP Camera Viewer");
 }
@@ -33,9 +34,7 @@ void Receiver::ProcessPending()
         socket_.readDatagram(datagram.data(), datagram.size());
 
         if (datagram.size() < 5)
-        {
             continue;
-        }
 
         QDataStream stream(datagram);
         stream.setByteOrder(QDataStream::BigEndian);
@@ -45,15 +44,13 @@ void Receiver::ProcessPending()
 
         stream >> camId >> length;
 
-        if (camId >= 3 || length != datagram.size() - 5)
-        {
+        if (camId >= CAM_COUNT || length != datagram.size() - 5)
             continue;
-        }
 
         QByteArray imageData = datagram.mid(5, length);
         QImage img = QImage::fromData(imageData, "JPG");
 
-        if (!img.isNull())
+        if (!img.isNull() && labels_[camId])
         {
             labels_[camId]->setPixmap(
                 QPixmap::fromImage(img).scaled(labels_[camId]->size(),
@@ -61,4 +58,11 @@ void Receiver::ProcessPending()
                                                Qt::SmoothTransformation));
         }
     }
+}
+
+Receiver::~Receiver()
+{
+    // No need to delete labels_ manually; Qt does it because of QObject hierarchy
+    disconnect(&socket_, nullptr, nullptr, nullptr);
+    socket_.close();
 }

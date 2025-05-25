@@ -11,6 +11,7 @@ class Receiver : public QWidget
     Q_OBJECT
 public:
     explicit Receiver(QWidget* parent = nullptr);
+    ~Receiver();
 
 private slots:
     void ProcessPending();
