@@ -65,6 +65,13 @@ void SystemInfoRetriever::SetCpuTemperature(double NewCpuTemperature)
     this->CpuTemperature = NewCpuTemperature;
 }
 
+void SystemInfoRetriever::SetIsSytemOnline(bool NewIsSystemOnline)
+{
+    this->IsSystemOnline = NewIsSystemOnline;
+}
+
+
+
 void SystemInfoRetriever::SetOverlayCpuUtilization()
 {
     if(CpuUsageWidget)
@@ -90,6 +97,11 @@ void SystemInfoRetriever::SetOverlayCpuTemperature()
         QString PercentText = PercentSign % QString::number(this->GetCpuTemperature());
         CpuTemperatureWidget->setText(PercentText);
     }
+}
+
+void SystemInfoRetriever::SetOverlayIsSystemOnline()
+{
+
 }
 
 

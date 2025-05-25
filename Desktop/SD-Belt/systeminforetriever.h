@@ -23,6 +23,7 @@ public:
     inline double GetCpuUtilization() { return CpuUtilization;}
     inline double GetRamUtilization() { return RamUtilization;}
     inline double GetCpuTemperature() { return CpuTemperature;}
+    inline bool GetIsSystemOnline() {return IsSystemOnline;}
 
 private slots:
 
@@ -33,10 +34,13 @@ protected:
     void SetCpuUtilization(double NewCpuUtilization);
     void SetRamUtilization(double NewRamUtilization);
     void SetCpuTemperature(double NewCpuTemperature);
+    void SetIsSytemOnline(bool NewIsSystemOnline);
+
 
     void SetOverlayCpuUtilization();
     void SetOverlayRamUtilization();
     void SetOverlayCpuTemperature();
+    void SetOverlayIsSystemOnline();
 
 private:
 
@@ -50,9 +54,11 @@ private:
     double CpuUtilization;
     double RamUtilization;
     double CpuTemperature;
+    bool IsSystemOnline = 0;
 
     QTimer *timer = nullptr;
     QString currentToken;
+
 
 signals:
 };
