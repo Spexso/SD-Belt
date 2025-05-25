@@ -68,56 +68,72 @@ bool HttpServerHandler::Bind()
     return server.bind_to_port("0.0.0.0", 8080);
 }
 
+#include <unordered_map>
+
 std::string HttpServerHandler::handleCommand(const std::string &cmd)
 {
     if (!arduino->isConnected())
         return "Arduino not connected.";
 
+    // Define command enum
+    enum CommandType {
+        CMD_START,
+        CMD_STOP,
+        CMD_REVERSE,
+        CMD_STATUS,
+        CMD_SPEED,
+        CMD_SERVO,
+        CMD_DIR_POS,
+        CMD_DIR_NEG,
+        CMD_UNKNOWN
+    };
+
+    // Map exact matches
+    static const std::unordered_map<std::string, CommandType> commandMap = {
+        {"start", CMD_START},
+        {"stop", CMD_STOP},
+        {"reverse", CMD_REVERSE},
+        {"status", CMD_STATUS},
+        {"dir=1", CMD_DIR_POS},
+        {"dir=-1", CMD_DIR_NEG}
+    };
+
     try
     {
-        if (cmd == "start")
-        {
-            return arduino->start(5); // Example ramp rate
-        }
-
-        if (cmd == "stop")
-        {
-            return arduino->stopImmediate();
-        }
-
-        if (cmd == "reverse")
-        {
-            return arduino->reverseDirection();
-        }
-
-        if (cmd == "status")
-        {
-            return arduino->getStatus();
-        }
-
+        // Handle special prefix commands
         if (cmd.rfind("speed=", 0) == 0)
         {
             int pct = std::stoi(cmd.substr(6));
             return arduino->setSpeed(pct);
         }
-
         if (cmd.rfind("servo=", 0) == 0)
         {
             int angle = std::stoi(cmd.substr(6));
             return arduino->setServoAngle(angle);
         }
 
-        if (cmd == "dir=1")
-        {
-            return arduino->setDirection(1);
-        }
+        // Handle exact match commands
+        auto it = commandMap.find(cmd);
+        CommandType commandType = (it != commandMap.end()) ? it->second : CMD_UNKNOWN;
 
-        if (cmd == "dir=-1")
+        switch (commandType)
         {
-            return arduino->setDirection(-1);
+            case CMD_START:
+                return arduino->start(5); // Example ramp rate
+            case CMD_STOP:
+                return arduino->stopImmediate();
+            case CMD_REVERSE:
+                return arduino->reverseDirection();
+            case CMD_STATUS:
+                return arduino->getStatus();
+            case CMD_DIR_POS:
+                return arduino->setDirection(1);
+            case CMD_DIR_NEG:
+                return arduino->setDirection(-1);
+            case CMD_UNKNOWN:
+            default:
+                return "ERR: Unknown command";
         }
-
-        return "ERR: Unknown command";
     }
     catch (const std::exception &e)
     {
