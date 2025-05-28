@@ -10,15 +10,15 @@ public class ProductMapper {
     private ProductMapper() {
         // Private constructor to prevent instantiation
     }
-    
+
     public static Product toDomain(ProductEntity entity) {
         return new Product(
                 entity.getId(),
                 entity.getName(),
                 entity.getDescription(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
-        );
+                entity.getUpdatedAt(),
+                entity.getImageId());
     }
 
     public static ProductEntity toEntity(Product product) {
@@ -27,7 +27,7 @@ public class ProductMapper {
                 product.name(),
                 product.description(),
                 product.createdAt(),
-                product.updatedAt()
-        );
+                product.updatedAt(),
+                product.imageId());
     }
 }

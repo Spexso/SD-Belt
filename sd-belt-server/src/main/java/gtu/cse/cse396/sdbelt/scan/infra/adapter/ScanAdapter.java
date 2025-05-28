@@ -5,7 +5,6 @@ import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.data.domain.Page;
@@ -48,12 +47,29 @@ public class ScanAdapter implements ScanService {
      */
     @Override
     @Transactional
-    public void create(UUID productId, Boolean isSuccess, String errorMessage) {
+    public void create(String productId, Double healthRatio, Boolean isSuccess, String errorMessage) {
+        // Convert timestamp to LocalDateTime if provided
+        LocalDateTime timestamp = LocalDateTime.now();
         Scan scan = Scan.builder()
                 .productId(productId)
+                .healthRatio(healthRatio)
                 .isSuccess(isSuccess)
                 .errorMessage(errorMessage)
-                .timestamp(LocalDateTime.now().toEpochSecond(ZoneOffset.UTC))
+                .timestamp(timestamp)
+                .build();
+        scanRepository.save(ScanMapper.toEntity(scan));
+    }
+
+    @Override
+    @Transactional
+    public void create(String productId, Double healthRatio, Boolean isSuccess, String errorMessage,
+            LocalDateTime scanTime) {
+        Scan scan = Scan.builder()
+                .productId(productId)
+                .healthRatio(healthRatio)
+                .isSuccess(isSuccess)
+                .errorMessage(errorMessage)
+                .timestamp(scanTime)
                 .build();
         scanRepository.save(ScanMapper.toEntity(scan));
     }
@@ -109,42 +125,41 @@ public class ScanAdapter implements ScanService {
 
         // Build dynamic query based on filter criteria
         Specification<ScanEntity> spec = Specification.where(null);
-        
+
         // Add product ID filter
         if (filter.productId() != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("productId"), filter.productId()));
         }
-        
+
         // Add success status filter
         if (filter.isSuccess() != null) {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("isSuccess"), filter.isSuccess()));
         }
-        
+
         // Add time filter if present
         if (filter.time() != null) {
             FilterTime timeFilter = filter.time();
-            
+
             // Parse string time values to LocalDateTime if not empty
-            if (timeFilter.startTime() != null && !timeFilter.startTime().isEmpty() && 
-                timeFilter.endTime() != null && !timeFilter.endTime().isEmpty()) {
-                
+            if (timeFilter.startTime() != null && !timeFilter.startTime().isEmpty() &&
+                    timeFilter.endTime() != null && !timeFilter.endTime().isEmpty()) {
+
                 try {
                     // Parse ISO format datetime strings (adjust the parsing format if needed)
                     LocalDateTime startTime = LocalDateTime.parse(timeFilter.startTime());
                     LocalDateTime endTime = LocalDateTime.parse(timeFilter.endTime());
-                    
-                    spec = spec.and((root, query, cb) -> 
-                        cb.between(root.get("timestamp"), startTime, endTime));
+
+                    spec = spec.and((root, query, cb) -> cb.between(root.get("timestamp"), startTime, endTime));
                 } catch (Exception e) {
                     // Log the parsing error and continue without time filtering
                     System.err.println("Error parsing time filter: " + e.getMessage());
                 }
             }
         }
-        
+
         // Execute query
         Page<ScanEntity> page = scanRepository.findAll(spec, pageable);
-        
+
         // Map entities to domain objects
         return page.getContent().stream()
                 .map(ScanMapper::toDomain)
@@ -162,25 +177,25 @@ public class ScanAdapter implements ScanService {
     @Transactional(readOnly = true)
     public GeneralStatistics generateStatistics(LocalDateTime startDate, LocalDateTime endDate) {
         List<ScanEntity> scans = scanRepository.findByTimestampBetween(startDate, endDate);
-        
+
         long totalScanned = scans.size();
         long totalSuccess = scans.stream().filter(ScanEntity::getIsSuccess).count();
         long totalFailed = totalScanned - totalSuccess;
-        
+
         // Calculate success and failure rates
         double successRate = totalScanned > 0 ? (double) totalSuccess / totalScanned * 100.0 : 0.0;
         double failureRate = totalScanned > 0 ? (double) totalFailed / totalScanned * 100.0 : 0.0;
-        
+
         // Group scans by product ID for product-specific statistics
-        Map<UUID, List<ScanEntity>> scansByProduct = scans.stream()
+        Map<String, List<ScanEntity>> scansByProduct = scans.stream()
                 .collect(Collectors.groupingBy(ScanEntity::getProductId));
-        
+
         List<ProductStatistics> productStatistics = new ArrayList<>();
-        
+
         scansByProduct.forEach((productId, productScans) -> {
             productStatistics.add(generateProductStatistics(productId, startDate, endDate, productScans));
         });
-        
+
         return new GeneralStatistics(
                 startDate,
                 endDate,
@@ -189,42 +204,43 @@ public class ScanAdapter implements ScanService {
                 totalFailed,
                 successRate,
                 failureRate,
-                productStatistics
-        );
+                productStatistics);
     }
 
     /**
      * Generates statistics for a specific product within the specified date range.
      *
-     * @param productId  The unique identifier of the product
-     * @param startDate  The beginning of the date range
-     * @param endDate    The end of the date range
+     * @param productId The unique identifier of the product
+     * @param startDate The beginning of the date range
+     * @param endDate   The end of the date range
      * @return Product-specific statistics for the specified period
      */
     @Override
     @Transactional(readOnly = true)
-    public ProductStatistics generateStatistics(UUID productId, LocalDateTime startDate, LocalDateTime endDate) {
+    public ProductStatistics generateStatistics(String productId, LocalDateTime startDate, LocalDateTime endDate) {
         List<ScanEntity> scans = scanRepository.findByProductIdAndTimestampBetween(productId, startDate, endDate);
         return generateProductStatistics(productId, startDate, endDate, scans);
     }
-    
+
     /**
      * Helper method to generate product statistics from a list of scan entities.
      * 
-     * @param productId  The unique identifier of the product
-     * @param startDate  The beginning of the date range
-     * @param endDate    The end of the date range
-     * @param scans      The list of scan entities for this product
+     * @param productId The unique identifier of the product
+     * @param startDate The beginning of the date range
+     * @param endDate   The end of the date range
+     * @param scans     The list of scan entities for this product
      * @return Product-specific statistics
      */
-    private ProductStatistics generateProductStatistics(UUID productId, LocalDateTime startDate, LocalDateTime endDate, List<ScanEntity> scans) {
+    private ProductStatistics generateProductStatistics(String productId, LocalDateTime startDate,
+            LocalDateTime endDate,
+            List<ScanEntity> scans) {
         long totalScanned = scans.size();
         long totalSuccess = scans.stream().filter(ScanEntity::getIsSuccess).count();
         long totalFailed = totalScanned - totalSuccess;
-        
+
         double successRate = totalScanned > 0 ? (double) totalSuccess / totalScanned * 100.0 : 0.0;
         double failureRate = totalScanned > 0 ? (double) totalFailed / totalScanned * 100.0 : 0.0;
-        
+
         return new ProductStatistics(
                 startDate,
                 endDate,
@@ -233,7 +249,6 @@ public class ScanAdapter implements ScanService {
                 totalSuccess,
                 totalFailed,
                 successRate,
-                failureRate
-        );
+                failureRate);
     }
 }

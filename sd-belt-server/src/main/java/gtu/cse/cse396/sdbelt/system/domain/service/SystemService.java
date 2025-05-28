@@ -1,6 +1,12 @@
 package gtu.cse.cse396.sdbelt.system.domain.service;
 
+import java.util.List;
+
+import gtu.cse.cse396.sdbelt.system.domain.model.BeltDirection;
 import gtu.cse.cse396.sdbelt.system.domain.model.System;
+import gtu.cse.cse396.sdbelt.system.domain.model.SystemLatestInfo;
+import gtu.cse.cse396.sdbelt.system.domain.model.SystemStatus;
+import gtu.cse.cse396.sdbelt.system.infra.adapter.SystemStatusInfo;
 
 /**
  * Service interface for managing the overall conveyor belt scanning system.
@@ -13,7 +19,8 @@ public interface SystemService {
     /**
      * Retrieves the current status and configuration of the scanning system.
      *
-     * @return the current {@link System} object containing system metadata and state
+     * @return the current {@link System} object containing system metadata and
+     *         state
      */
     System get();
 
@@ -42,11 +49,35 @@ public interface SystemService {
     void restart();
 
     /**
-     * Updates the system's configuration or metadata, such as its name or description.
+     * Restarts the scanning system.
+     * <p>
+     * Equivalent to calling {@link #stop()} followed by {@link #start()},
+     * used to reinitialize system components or recover from errors.
+     */
+    void shutdown();
+
+    /**
+     * Updates the system's configuration or metadata, such as its name or
+     * description.
      *
      * @param name        the new name for the system
      * @param description the new description for the system
      */
-    void update(String name, String description);
-}
+    void update(String name, String description, Integer speed, Double threshold, BeltDirection beltDirection);
 
+    void updateInfo(SystemStatusInfo info);
+
+    void reverse();
+
+    void updateThreshold(Double threshold);
+
+    void updateSpeed(Integer speed);
+
+    void update(SystemStatus status);
+
+    void update(SystemStatus status, Double cpuUsage, Double cpuTemperature, Double memoryUsage);
+
+    void saveStatus(SystemLatestInfo info);
+
+    List<SystemLatestInfo> getLogs();
+}

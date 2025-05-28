@@ -14,28 +14,24 @@ public class ScanMapper {
     private ScanMapper() {
         // Private constructor to prevent instantiation
     }
-    
+
     public static Scan toDomain(ScanEntity entity) {
         return new Scan(
                 entity.getProductId(),
-                entity.getTimestamp()
-                    .toInstant(ZoneOffset.ofHours(3))
-                    .getEpochSecond(),
+                entity.getHealthRatio(),
                 entity.getIsSuccess(),
-                entity.getErrorMessage()
-        );
+                entity.getErrorMessage(),
+                entity.getTimestamp());
     }
 
     public static ScanEntity toEntity(Scan scan) {
         return new ScanEntity(
                 null, // ID is auto-generated
                 scan.productId(),
-                Instant.ofEpochSecond(scan.timestamp())
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDateTime(),
+                scan.healthRatio(),
                 scan.isSuccess(),
-                scan.errorMessage()
-        );
+                scan.errorMessage(),
+                scan.timestamp());
     }
-  
-} 
+
+}

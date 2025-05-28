@@ -6,6 +6,7 @@ import org.springframework.web.socket.WebSocketSession;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import gtu.cse.cse396.sdbelt.ws.domain.model.RawMessage;
 import gtu.cse.cse396.sdbelt.ws.domain.service.WebSocketService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,7 +22,7 @@ public class WebSocketAdapter implements WebSocketService {
 
     private static final ConcurrentHashMap<String, WebSocketSession> sessions = new ConcurrentHashMap<>();
     private final ObjectMapper objectMapper;
-    
+
     /**
      * Register a WebSocket session
      */
@@ -30,7 +31,7 @@ public class WebSocketAdapter implements WebSocketService {
         sessions.put(session.getId(), session);
         log.info("Session registered: {}", session.getId());
     }
-    
+
     /**
      * Remove a WebSocket session
      */
@@ -39,21 +40,21 @@ public class WebSocketAdapter implements WebSocketService {
         sessions.remove(session.getId());
         log.info("Session removed: {}", session.getId());
     }
-    
+
     /**
      * Send a message to a specific client by session ID
      */
     @Override
-    public boolean send(Object message) {
+    public boolean send(RawMessage message) {
         for (Map.Entry<String, WebSocketSession> entry : sessions.entrySet()) {
             WebSocketSession session = entry.getValue();
-            if (trySend(session, message)) {
+            if (trySend(session, message.serialize())) {
                 return true;
             }
         }
         return false;
     }
-    
+
     private boolean trySend(WebSocketSession session, Object message) {
         if (session != null && session.isOpen()) {
             try {
@@ -68,7 +69,7 @@ public class WebSocketAdapter implements WebSocketService {
         }
         return false;
     }
-    
+
     /**
      * Get all active session IDs
      */
@@ -76,7 +77,7 @@ public class WebSocketAdapter implements WebSocketService {
     public Map<String, WebSocketSession> getSessions() {
         return sessions;
     }
-    
+
     /**
      * Get active session count
      */

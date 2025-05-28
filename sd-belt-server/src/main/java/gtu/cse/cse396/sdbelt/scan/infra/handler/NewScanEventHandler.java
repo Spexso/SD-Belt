@@ -3,6 +3,7 @@ package gtu.cse.cse396.sdbelt.scan.infra.handler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import gtu.cse.cse396.sdbelt.scan.domain.model.Scan;
+import gtu.cse.cse396.sdbelt.scan.domain.service.ScanService;
 import gtu.cse.cse396.sdbelt.scan.infra.mapper.ScanMapper;
 import gtu.cse.cse396.sdbelt.scan.infra.model.ScanEntity;
 import gtu.cse.cse396.sdbelt.scan.infra.repository.JpaScanRepository;
@@ -15,7 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NewScanEventHandler implements EventHandler<Scan> {
 
-    private final JpaScanRepository scanRepository;
+    private final ScanService scanService;
     private final ObjectMapper objectMapper;
 
     @Override
@@ -23,8 +24,7 @@ public class NewScanEventHandler implements EventHandler<Scan> {
         // Convert the RawEvent to a Scan object
         Scan scan = objectMapper.convertValue(event.data(), Scan.class);
         // Save the scan to the database
-        ScanEntity entity = ScanMapper.toEntity(scan);
-        scanRepository.save(entity);
+        log.info("Saving scan entity: {}", scan);
+        scanService.create(scan.productId(), scan.healthRatio(), scan.isSuccess(), scan.errorMessage());
     }
-
 }

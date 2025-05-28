@@ -1,6 +1,5 @@
 package gtu.cse.cse396.sdbelt.product.infra.model;
 
-import java.util.UUID;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -16,9 +15,8 @@ import lombok.Setter;
 public class ProductEntity {
 
     @Id
-    //@GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(columnDefinition = "VARCHAR(36)") // H2 workaround for UUID
-    private UUID id;
+    @Column(nullable = false, unique = true)
+    private String id;
 
     @Column(nullable = false)
     private String name;
@@ -30,6 +28,9 @@ public class ProductEntity {
 
     @Column(name = "updated_at")
     private java.time.LocalDateTime updatedAt;
+
+    @Column(name = "image_id")
+    private String imageId;
 
     @PrePersist
     protected void onCreate() {
