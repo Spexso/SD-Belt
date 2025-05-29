@@ -596,7 +596,7 @@ border: 3px</string>
                 <string/>
                </property>
                <property name="pixmap">
-                <pixmap resource="resource.qrc">:/styles/img/good.png</pixmap>
+                <pixmap resource="resource.qrc">:/styles/img/bad.png</pixmap>
                </property>
                <property name="scaledContents">
                 <bool>true</bool>

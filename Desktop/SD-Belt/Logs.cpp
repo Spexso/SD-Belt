@@ -28,17 +28,35 @@ void Logs::fetch(const QString &token)
 
 void Logs::onLogsReceived()
 {
+    if (!reply)
+        return;
+
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        qWarning() << "Network error:" << reply->errorString();
+        reply->deleteLater();
+        return;
+    }
+
     QByteArray response = reply->readAll();
     reply->deleteLater();
 
-    QJsonDocument doc = QJsonDocument::fromJson(response);
-    if (!doc.isObject()) return;
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        qWarning() << "JSON parse error:" << parseError.errorString();
+        return;
+    }
 
     QJsonObject root = doc.object();
-    if (!root.contains("result") || !root["result"].isArray()) return;
+    if (!root.contains("result") || !root["result"].isArray())
+        return;
 
     QJsonArray logs = root["result"].toArray();
-    listWidget->clear();
+
+    if (listWidget)
+        listWidget->clear();
 
     int totalCount = logs.size();
     if (countLabel)
@@ -49,6 +67,9 @@ void Logs::onLogsReceived()
 
     for (const QJsonValue &entry : logs)
     {
+        if (!entry.isObject())
+            continue;
+
         QJsonObject obj = entry.toObject();
         QString status = obj["isSuccess"].toBool() ? "✅" : "❌";
         QString productId = obj["productId"].toString();
@@ -68,7 +89,8 @@ void Logs::onLogsReceived()
             {
                 minTime = maxTime = timestamp;
                 first = false;
-            } else
+            }
+            else
             {
                 if (timestamp < minTime) minTime = timestamp;
                 if (timestamp > maxTime) maxTime = timestamp;
@@ -82,14 +104,20 @@ void Logs::onLogsReceived()
                                .arg(status)
                                .arg(message);
 
-        QListWidgetItem *item = new QListWidgetItem(logEntry);
-        item->setBackground(obj["isSuccess"].toBool() ? Qt::darkGreen : Qt::darkRed);
-        listWidget->addItem(item);
+        if (listWidget)
+        {
+            QListWidgetItem *item = new QListWidgetItem(logEntry);
+            item->setBackground(obj["isSuccess"].toBool() ? Qt::darkGreen : Qt::darkRed);
+            listWidget->addItem(item);
+        }
     }
 
-    listWidget->setVisible(true);
-    listWidget->update();
-
+    if (listWidget)
+    {
+        listWidget->setVisible(true);
+        listWidget->update();
+        listWidget->scrollToBottom();
+    }
 
     qint64 elapsedMinutes = minTime.secsTo(maxTime) / 60;
     if (elapsedMinutes == 0) elapsedMinutes = 1;
@@ -98,6 +126,7 @@ void Logs::onLogsReceived()
     if (speedLabel)
         speedLabel->setText(QString::number(itemsPerMinute));
 }
+
 
 void Logs::setCountLabel(QLabel *label)
 {

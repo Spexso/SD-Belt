@@ -29,21 +29,46 @@ void SystemInfoRetriever::fetch(const QString &token)
 
 void SystemInfoRetriever::OnSystemInfoReceived()
 {
+    if (!reply)
+        return;
+
+    if (reply->error() != QNetworkReply::NoError)
+    {
+        qWarning() << "System info request failed:" << reply->errorString();
+        reply->deleteLater();
+        return;
+    }
+
     QByteArray response = reply->readAll();
     reply->deleteLater();
 
-    QJsonDocument doc = QJsonDocument::fromJson(response);
-    if (!doc.isObject()) return;
+    QJsonParseError parseError;
+    QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
+    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    {
+        qWarning() << "Failed to parse system info JSON:" << parseError.errorString();
+        return;
+    }
 
     QJsonObject root = doc.object();
-    if (!root.contains("result") || !root["result"].isObject()) return;
+    if (!root.contains("result") || !root["result"].isObject())
+    {
+        qWarning() << "Missing or invalid 'result' in system info response";
+        return;
+    }
 
-    QJsonObject SystemInfo = root["result"].toObject();
+    QJsonObject systemInfo = root["result"].toObject();
 
-    this->SetCpuUtilization(SystemInfo["cpuUsage"].toDouble());
-    this->SetRamUtilization(SystemInfo["memoryUsage"].toDouble());
-    this->SetCpuTemperature(SystemInfo["cpuTemperature"].toDouble());
-    this->SetIsSytemOnline(SystemInfo["status"].toString() != "INACTIVE");
+    // Safely extract and apply system info values
+    double cpuUsage = systemInfo.value("cpuUsage").toDouble();
+    double ramUsage = systemInfo.value("memoryUsage").toDouble();
+    double cpuTemp = systemInfo.value("cpuTemperature").toDouble();
+    QString status = systemInfo.value("status").toString();
+
+    this->SetCpuUtilization(cpuUsage);
+    this->SetRamUtilization(ramUsage);
+    this->SetCpuTemperature(cpuTemp);
+    this->SetIsSytemOnline(status != "INACTIVE");
 
     SetOverlayCpuTemperature();
     SetOverlayCpuUtilization();

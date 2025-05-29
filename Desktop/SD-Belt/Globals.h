@@ -3,7 +3,7 @@
 
 #define PercentSign "%"
 #define CelciusSign "C°"
-#define BackendAddress "http://192.168.171.249:6060/api/v1"
+#define BackendAddress "http://172.20.10.6:6060/api/v1"
 #define BackendPort "6060"
 #define SystemStopPoint "/system/stop"
 #define SystemSpeedPoint "/system/speed"
@@ -21,6 +21,6 @@
 
 // MainWindow
 #define ProjectName "SD-Belt"
-#define RaspListenerAddress "http://172.20.10.3"
+#define RaspListenerAddress "http://172.20.10.4"
 
 #endif // GLOBALS_H
