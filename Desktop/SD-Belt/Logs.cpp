@@ -22,8 +22,11 @@ void Logs::fetch(const QString &token)
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QString("Bearer %1").arg(token).toUtf8());
 
-    reply = network->get(request);
-    connect(reply, &QNetworkReply::finished, this, &Logs::onLogsReceived);
+    if(network)
+    {
+        reply = network->get(request);
+        connect(reply, &QNetworkReply::finished, this, &Logs::onLogsReceived);
+    }
 }
 
 void Logs::onLogsReceived()

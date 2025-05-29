@@ -13,6 +13,7 @@ SOURCES += \
     CameraReceiver.cpp \
     Logs.cpp \
     SystemInfoRetriever.cpp \
+    SystemLogRetriever.cpp \
     main.cpp \
     mainwindow.cpp
 
@@ -21,6 +22,7 @@ HEADERS += \
     Globals.h \
     Logs.h \
     SystemInfoRetriever.h \
+    SystemLogRetriever.h \
     mainwindow.h
 
 FORMS += \

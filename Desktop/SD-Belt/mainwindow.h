@@ -7,6 +7,7 @@
 #include <QPushButton>
 #include "Logs.h"
 #include "SystemInfoRetriever.h"
+#include "SystemLogRetriever.h"
 #include "Globals.h"
 
 
@@ -71,6 +72,7 @@ private:
 
     QNetworkAccessManager *NetworkManager;
     SystemInfoRetriever *SystemInfo;
+    SystemLogRetriever *SystemLog;
     Logs *logs;
 
     QTimer *speedPostTimer;

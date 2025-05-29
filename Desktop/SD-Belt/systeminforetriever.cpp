@@ -23,8 +23,11 @@ void SystemInfoRetriever::fetch(const QString &token)
     QNetworkRequest request(url);
     request.setRawHeader("Authorization", QString("Bearer %1").arg(token).toUtf8());
 
-    reply = network->get(request);
-    connect(reply, &QNetworkReply::finished, this, &SystemInfoRetriever::OnSystemInfoReceived);
+    if(network)
+    {
+        reply = network->get(request);
+        connect(reply, &QNetworkReply::finished, this, &SystemInfoRetriever::OnSystemInfoReceived);
+    }
 }
 
 void SystemInfoRetriever::OnSystemInfoReceived()

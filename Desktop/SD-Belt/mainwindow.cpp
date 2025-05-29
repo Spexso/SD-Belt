@@ -12,6 +12,23 @@
 #include <QNetworkRequest>
 #include <QNetworkReply>
 
+// QUrl getUrl(QString("%1%2").arg(BackendAddress).arg(SystemLogs));
+// QNetworkRequest getRequest(getUrl);
+
+// QNetworkReply* getReply = NetworkManager->get(getRequest);
+// connect(getReply, &QNetworkReply::finished, this, [=]() {
+//     if (getReply->error() != QNetworkReply::NoError)
+//     {
+//         qWarning() << "[GET /logs/system] Failed:" << getReply->errorString();
+//         getReply->deleteLater();
+//         return;
+//     }
+
+//     QByteArray response = getReply->readAll();
+//     qDebug() << "[GET /logs/system] Response:" << response;
+//     getReply->deleteLater();
+// });
+
 int lastDialValue = 180;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -30,6 +47,9 @@ MainWindow::MainWindow(QWidget *parent)
 
     // System Info
     SystemInfo = new SystemInfoRetriever(NetworkManager, ui->CpuTemperatureValue, ui->CPUUsageValue, ui->RamUsageValue, ui->SystemIndicator, this);
+
+    // System Log
+    SystemLog = new SystemLogRetriever(NetworkManager, ui->LogList, this);
 
     // TEST START
     speedPostTimer = new QTimer(this);
@@ -124,7 +144,7 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->CamerasButton, &QPushButton::clicked, this, &MainWindow::OnCamerasButtonClicked);
     connect(ui->LogsButton, &QPushButton::clicked, this, &MainWindow::OnLogsButtonClicked);
     connect(ui->ReverseButton, &QPushButton::clicked, this, &MainWindow::OnReverseTheFlowClicked);
-    connect(ui->NotifyButton, &QPushButton::clicked, this, &MainWindow::OnNotifyAdminClicked);
+    // connect(ui->NotifyButton, &QPushButton::clicked, this, &MainWindow::OnNotifyAdminClicked);
     connect(ui->EmergencyStopButton, &QPushButton::clicked, this, &MainWindow::OnEmergencyStopClicked);
     connect(ui->DebugButton, &QPushButton::clicked, this, &MainWindow::OnDebugButtonClicked);
 
@@ -275,16 +295,16 @@ void MainWindow::OnReverseTheFlowClicked()
 void MainWindow::OnEmergencyStopClicked()
 {
     QUrl postUrl(QString("%1%2").arg(BackendAddress).arg(SystemStopPoint));
-     QNetworkRequest postRequest(postUrl);
-     postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
+    QNetworkRequest postRequest(postUrl);
+    postRequest.setHeader(QNetworkRequest::ContentTypeHeader, "text/plain");
 
-     // Send the STOP command for immediate emergency stop
-     QNetworkReply *postReply = NetworkManager->post(postRequest, "STOP\n");
-     connect(postReply, &QNetworkReply::finished, this, [=]() {
-         QString response = postReply->readAll();
-         qDebug() << "[POST /echo] Response:" << response;
-         postReply->deleteLater();
-     });
+    // Send the STOP command for immediate emergency stop
+    QNetworkReply *postReply = NetworkManager->post(postRequest, "STOP\n");
+    connect(postReply, &QNetworkReply::finished, this, [=]() {
+        QString response = postReply->readAll();
+        qDebug() << "[POST /echo] Response:" << response;
+        postReply->deleteLater();
+    });
 
      ui->SpeedPercent->setText(QString("% %1").arg(0));
      ui->SpeedAdjuster->setValue(0);
@@ -328,9 +348,4 @@ void MainWindow::OnSpeedChanged(int value)
     speedPostTimer->start();
 
     OnSpeedAdjusted(); // Change the speed
-}
-
-void MainWindow::OnNotifyAdminClicked()
-{
-    // Notify Admin
 }

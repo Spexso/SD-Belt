@@ -9,6 +9,7 @@
 #define SystemSpeedPoint "/system/speed"
 #define SystemReversePoint "/system/reverse"
 #define SystemNotifyPoint "/system/notify"
+#define SystemLogs "/system/logs"
 
 #define AccessSystemInfoUrl "/system/info"
 #define AccessLogsUrl "/scans"

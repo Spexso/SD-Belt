@@ -1066,58 +1066,6 @@ QPushButton:pressed {
                          </property>
                         </widget>
                        </item>
-                       <item>
-                        <widget class="QPushButton" name="NotifyButton">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="font">
-                          <font>
-                           <pointsize>18</pointsize>
-                           <bold>true</bold>
-                          </font>
-                         </property>
-                         <property name="styleSheet">
-                          <string notr="true">QPushButton {
-    background-color: #212b37;
-    color: white;
-    border: 2px solid #2980b9;
-    border-radius: 40px;       /* half of 50x50 */
-    width: 240px;
-    height: 200px;
-    font-weight: bold;
-}
-
-QPushButton:hover {
-    background-color: #5dade2; /* lighter blue on hover */
-    border: 2px solid #2471a3;
-}
-
-QPushButton:pressed {
-    background-color: #1f618d; /* darker blue on click */
-    border: 2px solid #1a5276;
-}
-</string>
-                         </property>
-                         <property name="text">
-                          <string>Notify Admin</string>
-                         </property>
-                         <property name="icon">
-                          <iconset>
-                           <normalon>:/styles/img/Notify.png</normalon>
-                          </iconset>
-                         </property>
-                         <property name="iconSize">
-                          <size>
-                           <width>36</width>
-                           <height>36</height>
-                          </size>
-                         </property>
-                        </widget>
-                       </item>
                       </layout>
                      </widget>
                     </item>
@@ -1147,7 +1095,7 @@ QPushButton:pressed {
                       </property>
                       <property name="minimumSize">
                        <size>
-                        <width>0</width>
+                        <width>700</width>
                         <height>0</height>
                        </size>
                       </property>
@@ -1182,14 +1130,14 @@ font: 16pt &quot;Segoe UI&quot;;</string>
                        <item>
                         <widget class="QListWidget" name="LogList">
                          <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+                          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                            <horstretch>0</horstretch>
                            <verstretch>0</verstretch>
                           </sizepolicy>
                          </property>
                          <property name="minimumSize">
                           <size>
-                           <width>50</width>
+                           <width>0</width>
                            <height>0</height>
                           </size>
                          </property>
