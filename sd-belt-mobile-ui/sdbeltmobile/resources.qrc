@@ -1,0 +1,20 @@
+<RCC>
+    <qresource prefix="/">
+        <file>Main.qml</file>
+        <file>HomePage.qml</file>
+        <file>LoginPage.qml</file>
+        <file>OperationsPage.qml</file>
+        <file>ProductsPage.qml</file>
+        <file>ProductStatsPage.qml</file>
+    </qresource>
+    <qresource prefix="/icons">
+        <file alias="home.svg">icons/home.svg</file>
+        <file alias="operations.svg">icons/operations.svg</file>
+        <file alias="products.svg">icons/products.svg</file>
+        <file alias="revert.svg">icons/revert.svg</file>
+        <file alias="shutdown.svg">icons/shutdown.svg</file>
+        <file alias="signout.svg">icons/signout.svg</file>
+        <file alias="start.svg">icons/start.svg</file>
+        <file alias="app_logo.png">icons/app_logo.png</file>
+    </qresource>
+</RCC>
