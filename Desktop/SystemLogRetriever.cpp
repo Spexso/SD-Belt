@@ -1,21 +1,19 @@
 #include "SystemLogRetriever.h"
 #include "Globals.h"
-#include <QNetworkRequest>
+
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QDebug>
 
-
-SystemLogRetriever::SystemLogRetriever(QNetworkAccessManager* manager, QListWidget* LogWidget, QObject* parent)
-    : QObject(parent), network(manager), LogListWidget(LogWidget)
+SystemLogRetriever::SystemLogRetriever(QNetworkAccessManager* manager, QListWidget* logWidget, QObject* parent)
+    : QObject(parent), network(manager), LogListWidget(logWidget)
 {
-
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this]() {
         this->fetch(currentToken);
     });
-    timer->start(2000);
+    timer->start(4000); // Every 2 seconds
 }
 
 void SystemLogRetriever::fetch(const QString& token)
@@ -32,68 +30,48 @@ void SystemLogRetriever::fetch(const QString& token)
 
 void SystemLogRetriever::OnSystemLogReceived()
 {
-    if (!reply)
+    QNetworkReply* finishedReply = reply;
+    reply = nullptr;
+
+    if (!finishedReply)
         return;
 
-    if (reply->error() != QNetworkReply::NoError)
-    {
-        qWarning() << "System log request failed:" << reply->errorString();
-        reply->deleteLater();
-        return;
-    }
-
-    QByteArray response = reply->readAll();
-    reply->deleteLater();
+    QByteArray responseData = finishedReply->readAll();
+    finishedReply->deleteLater();
 
     QJsonParseError parseError;
-    QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
-    if (parseError.error != QJsonParseError::NoError || !doc.isObject())
+    QJsonDocument doc = QJsonDocument::fromJson(responseData, &parseError);
+
+    if (parseError.error != QJsonParseError::NoError)
     {
         qWarning() << "Failed to parse system log JSON:" << parseError.errorString();
         return;
     }
 
-    QJsonObject root = doc.object();
-    if (!root.contains("result") || !root["result"].isArray())
+    if (!doc.isObject())
     {
-        qWarning() << "Missing or invalid 'result' in system log response";
+        qWarning() << "Expected a JSON object but got something else.";
         return;
     }
 
-    QJsonArray logArray = root["result"].toArray();
-
-    if (LogListWidget)
-        LogListWidget->clear();
-
-    for (const QJsonValue& entry : std::as_const(logArray))
+    QJsonObject root = doc.object();
+    if (!root.contains("logs") || !root["logs"].isArray())
     {
-        if (!entry.isObject())
-            continue;
-
-        QJsonObject obj = entry.toObject();
-        QString level = obj.value("level").toString();
-
-        if (level != "ERROR")
-            continue; // Only process ERROR logs
-
-        QString timestamp = obj.value("timestamp").toString();
-        QString message = obj.value("message").toString();
-
-        QString logEntry = QString("[%1] %2: %3")
-                               .arg(timestamp)
-                               .arg(level)
-                               .arg(message);
-
-        qDebug() << logEntry;
-
-        if (LogListWidget)
-        {
-            QListWidgetItem* item = new QListWidgetItem(logEntry);
-            item->setBackground(Qt::darkCyan);
-            LogListWidget->addItem(item);
-        }
+        qWarning() << "JSON does not contain a valid 'logs' array.";
+        return;
     }
 
-    if (LogListWidget)
-        LogListWidget->scrollToBottom();
+    QJsonArray logsArray = root["logs"].toArray();
+    for (const QJsonValue& entry : logsArray)
+    {
+        QString text = entry.toString();
+
+        // Limit log entries to avoid bad_alloc
+        if (LogListWidget->count() >= MaxLogItems)
+        {
+            delete LogListWidget->takeItem(0); // Remove oldest
+        }
+
+        LogListWidget->addItem(new QListWidgetItem(text));
+    }
 }

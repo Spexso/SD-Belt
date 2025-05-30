@@ -5,14 +5,14 @@
 #include <QDateTime>
 #include <QDebug>
 
-Logs::Logs(QNetworkAccessManager *manager, QListWidget *target, QObject *parent)
-    : QObject(parent), network(manager), listWidget(target)
+Logs::Logs(QNetworkAccessManager *manager, QListWidget *target, QLabel *ItemsPerMinute, QObject *parent)
+    : QObject(parent), network(manager), listWidget(target), ItemsPerMinuteWidget(ItemsPerMinute)
 {
     timer = new QTimer(this);
     connect(timer, &QTimer::timeout, this, [this]() {
         this->fetch(currentToken);
     });
-    timer->start(2000);
+    timer->start(7000);
 }
 
 void Logs::fetch(const QString &token)
@@ -28,6 +28,8 @@ void Logs::fetch(const QString &token)
         connect(reply, &QNetworkReply::finished, this, &Logs::onLogsReceived);
     }
 }
+
+#include "Globals.h"  // Ensure LogsPerMinute is declared here
 
 void Logs::onLogsReceived()
 {
@@ -126,9 +128,12 @@ void Logs::onLogsReceived()
     if (elapsedMinutes == 0) elapsedMinutes = 1;
 
     int itemsPerMinute = totalCount / elapsedMinutes;
-    if (speedLabel)
-        speedLabel->setText(QString::number(itemsPerMinute));
+
+    // Update UI label
+    if (ItemsPerMinuteWidget)
+        ItemsPerMinuteWidget->setText(QString::number(itemsPerMinute));
 }
+
 
 
 void Logs::setCountLabel(QLabel *label)

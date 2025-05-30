@@ -31,6 +31,8 @@ private:
     QTimer *timer = nullptr;
     QString currentToken;
 
+    const int MaxLogItems = 1000; // Cap to prevent bad_alloc
+
 signals:
 };
 

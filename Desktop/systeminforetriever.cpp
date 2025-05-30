@@ -13,7 +13,7 @@ SystemInfoRetriever::SystemInfoRetriever(QNetworkAccessManager *manager, QLabel*
     connect(timer, &QTimer::timeout, this, [this]() {
         this->fetch(currentToken);
     });
-    timer->start(2000);
+    timer->start(4000);
 }
 
 void SystemInfoRetriever::fetch(const QString &token)
@@ -39,11 +39,13 @@ void SystemInfoRetriever::OnSystemInfoReceived()
     {
         qWarning() << "System info request failed:" << reply->errorString();
         reply->deleteLater();
+        reply = nullptr; // Prevent crash on reuse
         return;
     }
 
     QByteArray response = reply->readAll();
     reply->deleteLater();
+    reply = nullptr;
 
     QJsonParseError parseError;
     QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);

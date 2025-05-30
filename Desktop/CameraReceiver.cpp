@@ -30,35 +30,49 @@ Receiver::Receiver(QWidget* parent)
 
 void Receiver::ProcessPending()
 {
+    if (!socket_.isValid())
+        return;
+
     while (socket_.hasPendingDatagrams())
     {
         QByteArray datagram;
         datagram.resize(socket_.pendingDatagramSize());
-        socket_.readDatagram(datagram.data(), datagram.size());
+        qint64 bytesRead = socket_.readDatagram(datagram.data(), datagram.size());
 
-        if (datagram.size() < 5)
+        // If read failed or mismatch in size
+        if (bytesRead <= 0 || datagram.size() < 5)
             continue;
 
         QDataStream stream(datagram);
         stream.setByteOrder(QDataStream::BigEndian);
 
-        quint8 camId;
-        quint32 length;
+        quint8 camId = 0;
+        quint32 length = 0;
 
         stream >> camId >> length;
 
-        if (camId >= CAM_COUNT || length != datagram.size() - 5)
+        // Validate camId and data size
+        if (camId >= CAM_COUNT || static_cast<int>(length) != datagram.size() - 5)
             continue;
 
+        // Extract image data
         QByteArray imageData = datagram.mid(5, length);
-        QImage img = QImage::fromData(imageData, "JPG");
+        if (imageData.isEmpty())
+            continue;
 
-        if (!img.isNull() && labels_[camId])
+        QImage img = QImage::fromData(imageData, "JPG");
+        if (img.isNull())
+            continue;
+
+        if (labels_[camId])
         {
-            labels_[camId]->setPixmap(
-                QPixmap::fromImage(img).scaled(labels_[camId]->size(),
-                                               Qt::KeepAspectRatio,
-                                               Qt::SmoothTransformation));
+            QPixmap pixmap = QPixmap::fromImage(img).scaled(
+                labels_[camId]->size(),
+                Qt::KeepAspectRatio,
+                Qt::SmoothTransformation
+                );
+
+            labels_[camId]->setPixmap(pixmap);
         }
     }
 }

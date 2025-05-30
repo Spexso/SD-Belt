@@ -40,9 +40,9 @@ MainWindow::MainWindow(QWidget *parent)
     NetworkManager = new QNetworkAccessManager(this);
 
     // Logs
-    logs = new Logs(NetworkManager, ui->MainLogs, this);
+    logs = new Logs(NetworkManager, ui->MainLogs, ui->ItemsPerMinute,  this);
     logs->setCountLabel(ui->label_19);
-    logs->setSpeedLabel(ui->label_21);
+    logs->setSpeedLabel(ui->ItemsPerMinute);
     // logs->fetch("547b62e5-8fa8-4f33-a8b2-9cf8de4b97ba");
 
     // System Info

@@ -13,7 +13,7 @@ class Logs : public QObject
 {
     Q_OBJECT
 public:
-    explicit Logs(QNetworkAccessManager *manager, QListWidget *target, QObject *parent = nullptr);
+    explicit Logs(QNetworkAccessManager *manager, QListWidget *target, QLabel* ItemsPerMinute, QObject *parent = nullptr);
     void fetch(const QString &token);
     void setCountLabel(QLabel *label);
     void setSpeedLabel(QLabel *label);
@@ -27,6 +27,7 @@ private:
     QNetworkReply *reply;
     QLabel *countLabel = nullptr;
     QLabel *speedLabel = nullptr;
+    QLabel* ItemsPerMinuteWidget = nullptr;
 
     QTimer *timer = nullptr;
     QString currentToken;
