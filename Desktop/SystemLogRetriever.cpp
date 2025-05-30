@@ -37,7 +37,7 @@ void SystemLogRetriever::OnSystemLogReceived()
 
     if (reply->error() != QNetworkReply::NoError)
     {
-        qWarning() << "System info request failed:" << reply->errorString();
+        qWarning() << "System log request failed:" << reply->errorString();
         reply->deleteLater();
         return;
     }
@@ -49,18 +49,21 @@ void SystemLogRetriever::OnSystemLogReceived()
     QJsonDocument doc = QJsonDocument::fromJson(response, &parseError);
     if (parseError.error != QJsonParseError::NoError || !doc.isObject())
     {
-        qWarning() << "Failed to parse system info JSON:" << parseError.errorString();
+        qWarning() << "Failed to parse system log JSON:" << parseError.errorString();
         return;
     }
 
     QJsonObject root = doc.object();
     if (!root.contains("result") || !root["result"].isArray())
     {
-        qWarning() << "Missing or invalid 'result' in system info response";
+        qWarning() << "Missing or invalid 'result' in system log response";
         return;
     }
 
     QJsonArray logArray = root["result"].toArray();
+
+    if (LogListWidget)
+        LogListWidget->clear();
 
     for (const QJsonValue& entry : std::as_const(logArray))
     {
@@ -68,12 +71,29 @@ void SystemLogRetriever::OnSystemLogReceived()
             continue;
 
         QJsonObject obj = entry.toObject();
-        QString timestamp = obj.value("timestamp").toString();
         QString level = obj.value("level").toString();
+
+        if (level != "ERROR")
+            continue; // Only process ERROR logs
+
+        QString timestamp = obj.value("timestamp").toString();
         QString message = obj.value("message").toString();
 
-        qDebug() << "[" << timestamp << "]"
-                 << level << ":"
-                 << message;
+        QString logEntry = QString("[%1] %2: %3")
+                               .arg(timestamp)
+                               .arg(level)
+                               .arg(message);
+
+        qDebug() << logEntry;
+
+        if (LogListWidget)
+        {
+            QListWidgetItem* item = new QListWidgetItem(logEntry);
+            item->setBackground(Qt::darkCyan);
+            LogListWidget->addItem(item);
+        }
     }
+
+    if (LogListWidget)
+        LogListWidget->scrollToBottom();
 }
