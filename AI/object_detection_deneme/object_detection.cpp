@@ -1,5 +1,3 @@
-
-
 #include "scan_request_dto.h"
 #include "http_client.h"
 #include "async_inference.hpp"
@@ -26,7 +24,10 @@
 #include "system_messages_dto.h"
 #include "HttpServerHandler.hpp"
 
-
+// mert arduino flush variables başlangıç
+inline static const std::string InoFilePath = "../SerialPort_communication/SerialPort_communication.ino";
+inline static const std::string ARDUINO_PORT {"/dev/ttyUSB0"};
+// mert arduino flush variables bitiş
 
 pthread_barrier_t sync_barrier;
 
@@ -68,6 +69,8 @@ std::atomic_bool all_cameras_done(false);
 
 int count = ImageInterface::SAVE_NUMBER;
 
+int num_camera = ImageInterface::CAMERA_NUMBER;
+
 
 
 typedef struct CamBuf{
@@ -93,7 +96,12 @@ struct CpuTimes { long long user, nice, system, idle; };
 double get_cpu_temp() {
     std::ifstream t("/sys/class/thermal/thermal_zone0/temp");
     double millideg;
-    if (t >> millideg) return millideg / 1000.0;   // °C
+    if (t >> millideg) 
+		return millideg / 1000.0;   // °C
+	
+	SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "get_cpu_temp failed");
+	system_message_queue->push(msg);
+    
     throw std::runtime_error("temp read failed");
 }
 
@@ -143,6 +151,8 @@ void log_system_messages()
     HttpClient client;
     if (!client.initialize()) {
         std::cerr << "Failed to initialize HTTP client for system stats" << std::endl;
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to initialize HTTP client for system stats");
+		system_message_queue->push(msg);
         return;
     }
     
@@ -169,6 +179,8 @@ void log_system_messages()
         else 
         {
             std::cerr << "Failed to send system status to server" << std::endl;
+            SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to send system status to server");
+			system_message_queue->push(msg);
         }
 
         // Wait 5 seconds (same as original timing)
@@ -185,6 +197,8 @@ void log_system_stats()
     HttpClient client;
     if (!client.initialize()) {
         std::cerr << "Failed to initialize HTTP client for system stats" << std::endl;
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to initialize HTTP Client for system stats");
+		system_message_queue->push(msg);
         return;
     }
     
@@ -212,10 +226,12 @@ void log_system_stats()
         bool success = client.sendSystemStatus(host, port, path, systemStatus);
         
         if (success) {
-            std::cout << "System status sent: " << temp << "°C, " << cpuPct << "%, " 
-                      << memoryUsage << std::endl;
-        } else {
+            std::cout << "System status sent: " << temp << "°C, " << cpuPct << "%, " << memoryUsage << std::endl;
+        } 
+        else {
             std::cerr << "Failed to send system status to server" << std::endl;
+            SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to send system status to server");
+			system_message_queue->push(msg);
         }
 
         // Wait 5 seconds (same as original timing)
@@ -256,8 +272,11 @@ void log_system_stats()
 std::pair<std::string,bool> parse_class_string(const std::string& full)
 {
 	const auto pos = full.find('_');
-	if (pos == std::string::npos)
-	return {full, true};                // _ yoksa 'sağlıklı' varsay
+	if (pos == std::string::npos){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "String parser couldn't find '_'");
+		system_message_queue->push(msg);
+		return {full, true};                // _ yoksa 'sağlıklı' varsay
+	}
 	const std::string base = full.substr(0, pos);
 	const std::string state = full.substr(pos + 1);
 	const bool healthy = (state != "Rotten" && state != "rotten");
@@ -270,9 +289,13 @@ std::pair<std::string,bool> parse_class_string(const std::string& full)
 
 void release_resources(cv::VideoCapture &capture, cv::VideoWriter &video, InputType &input_type) {
     if (input_type.is_video) {
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Input type is video");
+		system_message_queue->push(msg);
         video.release();
     }
     if (input_type.is_camera) {
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Input type is camera");
+		system_message_queue->push(msg);
         capture.release();
         cv::destroyAllWindows();
     }
@@ -317,11 +340,13 @@ void mekanik_kol(std::string::res){
 */
 std::vector<ScanRequestDTO> scans;
 
-bool isProductHealthy(const std::vector<ScanRequestDTO>& scans) {
+bool isProductHealthy(const std::vector<ScanRequestDTO>& scans)
+ {
     double score = 0.0;
     int numberOfScans = scans.size();
     std::unordered_map<std::string, double> productConfidenceMap;
-
+	int count = 0;
+	bool flag1 = false, flag2 = false;
     for (const auto& scan : scans) {
         double confidence = scan.confidence();
         std::string productResult = scan.productResult();
@@ -332,23 +357,43 @@ bool isProductHealthy(const std::vector<ScanRequestDTO>& scans) {
         std::getline(iss, result);
 
         bool isSuccess = (result == "Healthy");
-        double health = isSuccess ? confidence : 0.0;
+        if(isSuccess)
+			count++;
+        double health = isSuccess ? confidence : -1 * confidence;
 
         score += health / numberOfScans;
 
         // Sum health per product ID
         productConfidenceMap[productId] += health;
     }
-
-    return score >= threshold;
+	std::cout << "Health score is: " << score << "threshold is: " << threshold << std::endl;
+	if(count == numberOfScans)
+		flag1 = true;
+	if(score >= threshold)
+		flag2 = true;
+		
+	if(flag1 == true && flag2 == true) // tüm isimler "Healthy" ve score >= threshold
+		return true;
+	else if(flag1 == true && flag2 == false) // tüm isimler "Healthy" ama !(score >= threshold)
+		return false; // muallakta kalındı
+	else if(flag1 == false && flag2 == true) // tüm isimler "Healthy" degil(Rotten) ama score >= threshold
+		return false;
+	else if(flag1 == false && flag2 == false) // tüm isimler "Healthy" degil (Rotten) ve !(score >= threshold)
+		return false;
+	return false; // buraya gelmemesi bekleniyor
 }
 
 bool send_to_server(HttpClient& client, std::string& host,int& port, std::string& path){
 	bool success = client.sendScans(host, port, path, scans);
     
 		if (success) {
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Scans successfully sent to server");
+			system_message_queue->push(msg);
 			std::cout << "Scans successfully sent to server" << std::endl;
-		} else {
+		} 
+		else {
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to send scans to server");
+			system_message_queue->push(msg);
 			std::cerr << "Failed to send scans to server" << std::endl;
 		}
 		
@@ -379,6 +424,8 @@ hailo_status run_post_process(
     /* Htpp Client */
         HttpClient client;
     if (!client.initialize()) {
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to initialize HTTP CLient");
+		system_message_queue->push(msg);
         std::cerr << "Failed to initialize HTTP client" << std::endl;
     }
      std::string host = ImageInterface::SERVER_IP;  // Change to your server's hostname or IP
@@ -386,15 +433,13 @@ hailo_status run_post_process(
     std::string path = ImageInterface::BACKEND_SCANS_POINT;
     
     while (all_cameras_done != true) {
-        std::cout << "naber ziya" << std::endl;
         show_progress(input_type, i, frame_count);
-        //std::cout << "xd" << std::endl;
         InferenceOutputItem output_item;
-        //std::cout << "gelcen mi buraya" << std::endl;
         if (!results_queue->pop(output_item)) {
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Something went wrong in post_process while loop");
+			system_message_queue->push(msg);
             continue;
         }
-        std::cout << "slm" << std::endl;
         auto& frame_to_draw = output_item.org_frame;
         auto bboxes = parse_nms_data(output_item.output_data_and_infos[0].first, class_count);
          
@@ -408,8 +453,13 @@ hailo_status run_post_process(
 		float max = -1.f;
 		
 		if (bboxes.empty()) {
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "No objects detected in this frame");
+			system_message_queue->push(msg);
 			std::cout << "No objects detected in this frame.\n";
-		} else {
+		} 
+		else {
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Object detected");
+			system_message_queue->push(msg);
 			std::cout << "Detected " << bboxes.size() << " objects:\n";
 			
 			
@@ -424,10 +474,6 @@ hailo_status run_post_process(
 					max_x = bbox.bbox.x_max;
 					max_y = bbox.bbox.y_max;
 				}
-				
-				// Initialize DTO
-				
-				// scans.push_back(ScanRequestDTO(class_name, confidence, bbox.bbox.y_max,bbox.bbox.x_max));
 
 				std::cout << j + 1 << ". Class: " << class_name
 						  << " (ID: " << bbox.class_id << ")"
@@ -437,22 +483,27 @@ hailo_status run_post_process(
 			}
 			
 			scans.push_back(ScanRequestDTO(max_class_name, max, max_y, max_x));
-			// class_names.push_back(max_class_name);
+			
 			std::cout << "Top-confidence: " << max_class_name << " (" 
 					  << std::fixed << std::setprecision(2) << max << "%)\n";
 			
-			if(scans.size() == 3){
+			if(scans.size() == num_camera){
 					should_door_open = send_to_server(client, host, port, path);
 					std::cout << "Should door open: " << should_door_open<< "\n";
-					if(should_door_open)
-						arduino.setServoAngle(45);
-					else
-						arduino.setServoAngle(135);
+					if(should_door_open){
+						arduino.setServoAngle(30);
+						std::cout << "hayrullah kutuk nere" << std::endl;
+						SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Servo Angle is set to 45");
+						system_message_queue->push(msg);
+					}
+					else{
+						arduino.setServoAngle(150);
+						SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Servo Angle is set to 135");
+						system_message_queue->push(msg);
+					}
 					scans.clear();
 			}
 		}
-		
-		
 		
 		
 		std::cout << "Sending " << scans.size() << " scans to server..." << std::endl;
@@ -511,9 +562,9 @@ hailo_status run_post_process(
         draw_bounding_boxes(frame_to_draw, bboxes);
         
         std::filesystem::create_directories("photos");          // photos yoksa aç
-        cv::imwrite("photos/deneme.jpg", frame_to_draw); 
-        
-        i++;
+        std::string filename = "photos/deneme_" + std::to_string(i) + ".jpg";
+		cv::imwrite(filename, frame_to_draw);
+		i++;
     }
     release_resources(capture, video, input_type);
     return HAILO_SUCCESS;
@@ -525,6 +576,8 @@ void preprocess_video_frames(cv::VideoCapture &capture,
     while (true) {
         capture >> org_frame;
         if (org_frame.empty()) {
+            SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "Something went wrong while take preprocess_video_frames");
+			system_message_queue->push(msg);
             preprocessed_queue->stop();
             break;
         }        
@@ -539,14 +592,16 @@ cv::Mat detectFirstVerticalLinesFromCenter(const cv::Mat &frame,
                                            double slopeTol = 0.5,
                                            int    mergeTol = 15)
 {
-    if (frame.empty()) return {};
-
+    if (frame.empty()){ 
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "First Vertical Lines couldn't detect, frame is empty!");
+		system_message_queue->push(msg);
+		return {};
+	}
     
     cv::Mat gray, edges;
     cv::cvtColor(frame, gray, cv::COLOR_BGR2GRAY);
     cv::Canny(gray, edges, 50, 150);
 
-    
     std::vector<cv::Vec4i> raw;
     cv::HoughLinesP(edges, raw,
                     1, CV_PI / 180,
@@ -620,7 +675,11 @@ std::pair<int,int> firstVerticalLineXsFromCenter(const cv::Mat &frame,
                                                  double slopeTol = 0.5,
                                                  int    mergeTol = 15)
 {
-    if (frame.empty()) return {-1, -1};
+    if (frame.empty()){ 
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "First Vertical Lines Xs From Center couldn't detect. Frame is empty, returning {-1, -1}");
+		system_message_queue->push(msg);
+		return {-1, -1};
+	}
 
     // Kenar ve Hough
     cv::Mat gray, edges;
@@ -665,8 +724,11 @@ std::pair<int,int> firstVerticalLineXsFromCenter(const cv::Mat &frame,
 
 inline cv::Mat cropBetweenXs(const cv::Mat &src, int leftX, int rightX)
 {
-    if (leftX < 0 || rightX < 0 || leftX >= rightX)   // çizgi bulunamadıysa
-        return src;                                   // kırpma yok
+    if (leftX < 0 || rightX < 0 || leftX >= rightX){   // çizgi bulunamadıysa kırpma yok
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Couldn't find vertical lines. So, no need to crop that frame");
+		system_message_queue->push(msg);
+        return src;
+	}
 
     leftX  = std::max(0,                 leftX);
     rightX = std::min(src.cols - 1,      rightX);
@@ -864,11 +926,16 @@ inline bool isCenterBetweenPoints(const cv::Point2d& p1,
                                   const cv::Point2d& p2,
                                   double frameWidth)
 {
-    if (frameWidth <= 0) return false;                 // geçersiz genişlik
-
+    if (frameWidth <= 0){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "Frame width <= 0");
+		system_message_queue->push(msg);
+		return false;                 // geçersiz genişlik
+	}
     const double centerX = frameWidth * 0.5;           // görüntü orta noktası (x)
     const double minX    = std::min(p1.x, p2.x);
     const double maxX    = std::max(p1.x, p2.x);
+    if(minX == -1 || maxX == -1)
+		return false;
 
     return centerX >= minX && centerX <= maxX;
 }
@@ -885,6 +952,9 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
     
     
     if (!cap.isOpened()) {
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "At least one of 3 cameras couldn't opened!");
+		system_message_queue->push(msg);
+		
         std::cerr << "Kamera " << buf.camId << " açılmadı!\n";
         // run = false;
         if (buf.camId == 0) camera0_active = false;
@@ -892,15 +962,9 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
 		else if (buf.camId == 2) camera2_active = false;
 		
 		--active_cameras;
-		
-		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Camera is not oppenned");
-		
-		system_message_queue->push(msg);
-		
+		num_camera--;
 		
 		pthread_barrier_wait(&sync_barrier);
-		
-		
 		
         return;
     }
@@ -915,11 +979,12 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
     cap.read(background);                       // ilk kareyi çek
     auto [leftX, rightX] = firstVerticalLineXsFromCenter(background);
     if (leftX == -1 && rightX == -1){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "There isn't any vertical lines. So, set leftX = 0, rightX = 640");
+		system_message_queue->push(msg);
 		leftX = 0;
 		rightX = 640;
-		}
-    std::cout << "Left X: "  << leftX
-              << ", Right X: " << rightX << '\n';
+	}
+    std::cout << "Left X: "  << leftX << ", Right X: " << rightX << '\n';
               
     cv::Mat cropped_background = cropBetweenXs(background, leftX, rightX);
     cv::Mat Test;
@@ -943,22 +1008,30 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
             
             std::string filePath;
 			
-    
-
         cv::Point2d difference;
         cv::Mat start_frame = mean_bg_frame.clone();
         cv::Mat tmp;
         
-        
-        
         cap.read(tmp);
         
-        cv::Mat previous_frame = cropBetweenXs(tmp, leftX, rightX);
+        cv::Mat tmp2 = cropBetweenXs(tmp, leftX, rightX);
         
-        cv::Point2d previous_difference = diffCentroidTol(start_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
+        cv::Mat previous_frame = mean_bg_frame.clone();
+       
+		cv::Point2d previous_difference ;
         
+			if(buf.camId == 0 && camera0_active == true){
+                previous_difference = diffCentroidTol(previous_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_0);
+            }
+            else if(buf.camId == 1 && camera1_active == true){
+                previous_difference = diffCentroidTol(previous_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_1);
+            }
+            
+            else if(buf.camId == 2 && camera2_active == true){
+                previous_difference = diffCentroidTol(previous_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_2);
+            }
         
-        
+         //previous_difference = diffCentroidTol(previous_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
         
     // — 2) Sürekli okuma, kırpma ve paylaşılan arabellek —
     
@@ -966,8 +1039,11 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
         cv::Mat frame;
         // frame is a cv::Mat that already contains your BGR pixels
 
-		
-        if (!cap.read(frame) || frame.empty()) break;
+        if (!cap.read(frame) || frame.empty()){ 
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Frame is empty! (grabLoop)");
+			system_message_queue->push(msg);
+			break; 
+		}
         
         // size_t rawBytes = frame.total() * frame.elemSize();   // rows*cols*channels
 		
@@ -1004,11 +1080,29 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
 			}
 			* */
 			
+			if(buf.camId == 0 && camera0_active == true){
+                difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_0);
+            }
+            else if(buf.camId == 1 && camera1_active == true){
+                difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_1);
+            }
             
-            difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
+            else if(buf.camId == 2 && camera2_active == true){
+                difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE_2);
+            }
+                    
+            
+            
+          
+  
+            //difference =  diffCentroidTol(mean_frame, previous_frame, ImageInterface::THRESHOLD_DIFFERENCE);
+            
+            
+
+            
             
             if (isCenterBetweenPoints(difference, previous_difference,rightX -leftX)){
-                std::cout << "nesne ortada algılandı " << buf.camId << std::endl;
+                // std::cout << "nesne ortada algılandı " << buf.camId << std::endl;
                 // ----- COOL-DOWN KONTROLÜ -----
                 auto  now          = std::chrono::steady_clock::now();
                 bool  can_capture  = true;
@@ -1024,6 +1118,12 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
 
                     /* — buraya ESAS tetikleme işleminiz — */
                     buf.object_detection = true;          // kuyruğa itmek için bayrak
+                    
+                    
+                    
+                    std::cout << difference << std::endl;
+					std::cout << previous_difference << std::endl;
+                    std::cout << (rightX - leftX) / 2 << std::endl;
                     
                     /*
                     
@@ -1050,30 +1150,59 @@ void grabLoop(int camId, CamBuf &buf, std::atomic<bool> &run,
                 buf.object_detection = false;
             }
             
+            
+            
+            
             previous_difference = difference;
             
+			/*
+            std::cout << difference << std::endl;
+            
+            std::cout << previous_difference << std::endl;
+            
+            */
             previous_frame = mean_frame.clone();
             
             
-            // showing the images with mutex for prevent thread intersect
-        {
-            std::lock_guard<std::mutex> lk(buf.m);
-            buf.frame = std::move(mean_frame);
             
-            udp.send(buf.camId, frame);
-        }
+            if(buf.camId == 0 && camera0_active == true){
+				std::lock_guard<std::mutex> lk(buf.m);
+				 // buf.frame = mean_frame.clone(); 
+				 buf.frame = std::move(cropped);
+
+				
+				udp.send(buf.camId, frame);
+			}
+            else if(buf.camId == 1 && camera1_active == true){
+				std::lock_guard<std::mutex> lk(buf.m);
+				// buf.frame = mean_frame.clone(); 
+				 buf.frame = std::move(cropped);
+
+				
+				udp.send(buf.camId, frame);
+			}
+            
+            else if(buf.camId == 2 && camera2_active == true) {
+				std::lock_guard<std::mutex> lk(buf.m);
+				
+				buf.frame = std::move(cropped);
+				// buf.frame = mean_frame.clone();
+				
+				udp.send(buf.camId, frame);
+			}
         
     }
     
     
 
     if (--active_cameras == 0){
+        SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "number of active cameras is 0, cameras will be closed.");
+		system_message_queue->push(msg);
         all_cameras_done = true;
 		std::cout << "camera düştü" << std::endl;
 	}
 	
 	pthread_barrier_wait(&sync_barrier);
-	
 	return;
 }
 
@@ -1135,10 +1264,14 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
 							 std::cref(udp0));
 		}
 		catch (const std::system_error& e) {    // creation failed
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Thread 0 couldn't be started");
+			system_message_queue->push(msg);
 			std::cerr << "Could not start thread: " << e.what() << '\n';
 		}
 
 		if (!t0.joinable()) {                   // safety check
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "Thread 0 is not running!");
+			system_message_queue->push(msg);
 			std::cerr << "Thread not running!\n";
 		}
 		
@@ -1161,10 +1294,14 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
 							 std::cref(udp1));
 		}
 		catch (const std::system_error& e) {    // creation failed
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Thread 1 couldn't be started");
+			system_message_queue->push(msg);
 			std::cerr << "Could not start thread: " << e.what() << '\n';
 		}
 
 		if (!t1.joinable()) {                   // safety check
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "Thread 1 is not running!");
+			system_message_queue->push(msg);
 			std::cerr << "Thread not running!\n";
 		}
 	
@@ -1188,10 +1325,14 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
 							 std::cref(udp2));
 		}
 		catch (const std::system_error& e) {    // creation failed
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Thread 2 couldn't be started");
+			system_message_queue->push(msg);
 			std::cerr << "Could not start thread: " << e.what() << '\n';
 		}
 
 		if (!t2.joinable()) {                   // safety check
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::WARNING, "Thread 2 is not running!");
+			system_message_queue->push(msg);
 			std::cerr << "Thread not running!\n";
 		}
 	
@@ -1266,6 +1407,8 @@ hailo_status run_preprocess(CommandLineArgs args, AsyncModelInfer &model,
         
 
         if (c == 27){
+			SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "ESC is clicked");
+			system_message_queue->push(msg);
             running = false;
         }
     }
@@ -1306,11 +1449,35 @@ hailo_status run_inference_async(AsyncModelInfer& model,
     return HAILO_SUCCESS;
 }
 
+// mert istek fonksiyon baslangic
+
+// FLASH ARDUINO
+bool UploadArduino()
+{
+	std::string command = "~/bin/arduino-cli compile --fqbn arduino:avr:uno " + InoFilePath + 
+                         " && ~/bin/arduino-cli upload -p " + ARDUINO_PORT + " --fqbn arduino:avr:uno " + InoFilePath;
+    
+    int result = system(command.c_str());
+    return (result == 0);
+}
+
+// mert istek fonksiyon bitis
+
+
 int main(int argc, char** argv)
 {
+	if(!UploadArduino())
+	{
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to flash arduino");
+		system_message_queue->push(msg);
+		return 0;
+	}
+	
 	ArduinoSerial arduino(ImageInterface::ARDUINO_PORT);
 	if (!arduino.isConnected())
 	{
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to connect to Arduino on");
+		system_message_queue->push(msg);
 		std::cerr << "Failed to connect to Arduino on " << ImageInterface::ARDUINO_PORT << std::endl;
 		// return 1;
 	}
@@ -1320,20 +1487,18 @@ int main(int argc, char** argv)
 	
 	if (!serverHandler.Bind())
 	{
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::ERROR, "Failed to bind server to port 8080");
+		system_message_queue->push(msg);
 		std::cerr << "Failed to bind server to port 8080\n";
 		return 1;
 	}
 	
-	
 	std::thread serverThread([&serverHandler]()
 							 { serverHandler.Start(); });
 	
-	
-	
-    size_t class_count = 4; // 80 classes in COCO dataset
+    size_t class_count = 6; // 80 classes in COCO dataset
     double fps = 30;
     
-
     std::chrono::duration<double> inference_time;
     std::chrono::time_point<std::chrono::system_clock> t_start = std::chrono::high_resolution_clock::now();
     double org_height, org_width;
@@ -1386,15 +1551,26 @@ int main(int argc, char** argv)
     );
     
     keep_logging = false;
-    if (logger_thread.joinable()) logger_thread.join();
+    if (logger_thread.joinable()){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Logger_thread is joinable. logger_thread.join() is called");
+		system_message_queue->push(msg); 
+		logger_thread.join();
+	}
     
-    if (message_thread.joinable()) message_thread.join();
+    if (message_thread.joinable()){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Message_thread is joinable. message_thread.join() is called");
+		system_message_queue->push(msg); 
+		message_thread.join();
+	}
     
     std::cout << "Stopping server...\n";
 	serverHandler.Stop();
 
-	if (serverThread.joinable())
+	if (serverThread.joinable()){
+		SystemLogMessageDTO msg = SystemLogMessageDTO(SystemLogMessageDTO::LogLevel::INFO, "Server_thread is joinable. server_thread.join() is called");
+		system_message_queue->push(msg); 
 		serverThread.join();
+	}
 
 	std::cout << "System shut down gracefully." << std::endl;
     

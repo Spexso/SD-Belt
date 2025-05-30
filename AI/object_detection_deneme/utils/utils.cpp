@@ -118,11 +118,31 @@ std::string get_coco_name_from_int(int cls)
         case 0:  result = "__background__";         break;
         case 1:  result = "Apple_Healthy";          break;
         case 2:  result = "Apple_Rotten";           break;
-        case 3:  result = "Banana_Healthy";         break;
-        case 4:  result = "Banana_Rotten";          break;
+        case 3:  result = "Potato_Healthy";         break;
+        case 4:  result = "Potato_Rotten";          break;
+        case 5:  result = "Orange_Healthy"; 	    break;
+        case 6:  result = "Orange_Rotten";          break;
     }
     return result;
 }
+
+
+/*
+std::string get_coco_name_from_int(int cls)
+{
+    std::string result = "N/A";
+    switch(cls) {
+        //case 0:  result = "__background__";         break;
+        case 0:  result = "Apple_Healthy";          break;
+        case 1:  result = "Apple_Rotten";           break;
+        case 2:  result = "Potato_Healthy";         break;
+        case 3:  result = "Potato_Rotten";          break;
+        case 4:  result = "Orange_Healthy"; 	    break;
+        case 5:  result = "Orange_Rotten";          break;
+    }
+    return result;
+}
+* */
 
 
 CommandLineArgs parse_command_line_arguments(int argc, char** argv) {
